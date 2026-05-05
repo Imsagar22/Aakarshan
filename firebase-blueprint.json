@@ -5,19 +5,21 @@
       "description": "A wholesaler or customer contact.",
       "type": "object",
       "properties": {
+        "userId": { "type": "string" },
         "name": { "type": "string" },
         "type": { "type": "string", "enum": ["wholesaler", "customer"] },
         "email": { "type": "string", "format": "email" },
         "phone": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["name", "type"]
+      "required": ["userId", "name", "type"]
     },
     "product": {
       "title": "Product",
       "description": "An item in the jewelry inventory.",
       "type": "object",
       "properties": {
+        "userId": { "type": "string" },
         "name": { "type": "string" },
         "category": { "type": "string" },
         "wholesalerId": { "type": "string" },
@@ -27,13 +29,14 @@
         "status": { "type": "string", "enum": ["In Stock", "Sold"] },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["name", "category", "wholesalerId", "cost", "purchaseDate", "status"]
+      "required": ["userId", "name", "category", "wholesalerId", "cost", "purchaseDate", "status"]
     },
     "sale": {
       "title": "Sale",
       "description": "A completed sale transaction.",
       "type": "object",
       "properties": {
+        "userId": { "type": "string" },
         "productId": { "type": "string" },
         "productName": { "type": "string" },
         "customerId": { "type": "string" },
@@ -43,12 +46,39 @@
         "saleDate": { "type": "string", "format": "date" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["productId", "customerId", "retailPrice", "costAtSale", "saleDate"]
+      "required": ["userId", "productId", "customerId", "retailPrice", "costAtSale", "saleDate"]
+    },
+    "userProfile": {
+      "title": "User Profile",
+      "description": "Basic information about an app user.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "lastLogin": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "isAdmin": { "type": "boolean" }
+      },
+      "required": ["email"]
+    },
+    "appMetrics": {
+      "title": "App Metrics",
+      "description": "Global application usage statistics.",
+      "type": "object",
+      "properties": {
+        "totalUsers": { "type": "number" },
+        "totalSales": { "type": "number" },
+        "totalInventoryValue": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "firestore": {
     "contacts": { "schema": "contact", "description": "Directory of wholesalers and customers." },
     "inventory": { "schema": "product", "description": "Active and sold product inventory." },
-    "sales": { "schema": "sale", "description": "Sales history records." }
+    "sales": { "schema": "sale", "description": "Sales history records." },
+    "users": { "schema": "userProfile", "description": "User profile records." },
+    "metrics": { "schema": "appMetrics", "description": "Global dashboard metrics." }
   }
 }

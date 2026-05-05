@@ -5,11 +5,14 @@ import { collection, addDoc, serverTimestamp, deleteDoc, doc } from 'firebase/fi
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { cn } from '../lib/utils';
 
+import { type User } from 'firebase/auth';
+
 interface ContactsProps {
   contacts: Contact[];
+  user: User;
 }
 
-export function Contacts({ contacts }: ContactsProps) {
+export function Contacts({ contacts, user }: ContactsProps) {
   const [isAdding, setIsAdding] = React.useState(false);
   const [filterType, setFilterType] = React.useState<'All' | 'wholesaler' | 'customer'>('All');
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -19,6 +22,7 @@ export function Contacts({ contacts }: ContactsProps) {
     const formData = new FormData(e.currentTarget);
     
     const contactData = {
+      userId: user.uid,
       name: formData.get('name') as string,
       type: formData.get('type') as string,
       email: formData.get('email') as string,

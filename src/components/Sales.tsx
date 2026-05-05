@@ -5,13 +5,16 @@ import { formatCurrency, cn } from '../lib/utils';
 import { collection, addDoc, serverTimestamp, updateDoc, doc, runTransaction } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 
+import { type User } from 'firebase/auth';
+
 interface SalesProps {
   sales: Sale[];
   products: Product[];
   customers: Contact[];
+  user: User;
 }
 
-export function Sales({ sales, products, customers }: SalesProps) {
+export function Sales({ sales, products, customers, user }: SalesProps) {
   const [isRecording, setIsRecording] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState('');
 
@@ -35,6 +38,7 @@ export function Sales({ sales, products, customers }: SalesProps) {
 
         transaction.update(productRef, { status: 'Sold' });
         transaction.set(saleRef, {
+          userId: user.uid,
           productId,
           productName: product.name,
           customerId,

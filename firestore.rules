@@ -16,6 +16,14 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.email_verified == true;
     }
 
+    function isAdmin() {
+      return isVerified() && request.auth.token.email == 'sagarmailstop@gmail.com';
+    }
+
+    function isOwner(data) {
+      return isSignedIn() && data.userId == request.auth.uid;
+    }
+
     function isValidId(id) {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
@@ -31,16 +39,18 @@ service cloud.firestore {
     // --- Entity Validations ---
 
     function isValidContact(data) {
-      return data.keys().hasAll(['name', 'type', 'createdAt']) &&
-             data.keys().size() >= 3 &&
+      return data.keys().hasAll(['userId', 'name', 'type', 'createdAt']) &&
+             data.keys().size() >= 4 &&
+             data.userId == request.auth.uid &&
              data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
              data.type in ['wholesaler', 'customer'] &&
              data.createdAt == request.time;
     }
 
     function isValidProduct(data) {
-      return data.keys().hasAll(['name', 'category', 'wholesalerId', 'wholesalerName', 'cost', 'status', 'purchaseDate', 'createdAt']) &&
-             data.keys().size() >= 8 &&
+      return data.keys().hasAll(['userId', 'name', 'category', 'wholesalerId', 'wholesalerName', 'cost', 'status', 'purchaseDate', 'createdAt']) &&
+             data.keys().size() >= 9 &&
+             data.userId == request.auth.uid &&
              data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
              data.category is string && data.category.size() > 0 && data.category.size() <= 100 &&
              isValidId(data.wholesalerId) &&
@@ -52,8 +62,9 @@ service cloud.firestore {
     }
 
     function isValidSale(data) {
-      return data.keys().hasAll(['productId', 'productName', 'customerId', 'customerName', 'retailPrice', 'costAtSale', 'saleDate', 'createdAt']) &&
-             data.keys().size() >= 8 &&
+      return data.keys().hasAll(['userId', 'productId', 'productName', 'customerId', 'customerName', 'retailPrice', 'costAtSale', 'saleDate', 'createdAt']) &&
+             data.keys().size() >= 9 &&
+             data.userId == request.auth.uid &&
              isValidId(data.productId) &&
              isValidId(data.customerId) &&
              data.retailPrice is number && data.retailPrice >= 0 &&
@@ -65,15 +76,37 @@ service cloud.firestore {
     // --- Collections ---
 
     match /contacts/{contactId} {
-      allow read, write: if isSignedIn();
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isVerified() && isValidContact(incoming());
+      allow update: if isVerified() && isOwner(existing()) && isValidContact(incoming());
+      allow delete: if isVerified() && isOwner(existing());
     }
 
     match /inventory/{productId} {
-      allow read, write: if isSignedIn();
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isVerified() && isValidProduct(incoming());
+      allow update: if isVerified() && isOwner(existing()) && isValidProduct(incoming());
+      allow delete: if isVerified() && isOwner(existing());
     }
 
     match /sales/{saleId} {
-      allow read, write: if isSignedIn();
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isVerified() && isValidSale(incoming());
+      allow update: if isVerified() && isOwner(existing()) && isValidSale(incoming());
+      allow delete: if isVerified() && isOwner(existing());
+    }
+
+    match /users/{userId} {
+      allow read: if isVerified() && (request.auth.uid == userId || isAdmin());
+      allow write: if isVerified() && request.auth.uid == userId;
+    }
+
+    match /metrics/{metricId} {
+      allow read: if isAdmin();
+      allow write: if false; // System only (handled by cloud function or manual admin)
     }
   }
 }

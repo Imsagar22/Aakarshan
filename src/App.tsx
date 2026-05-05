@@ -10,19 +10,22 @@ import {
   query, 
   orderBy 
 } from 'firebase/firestore';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth, db, loginWithGoogle, handleRedirectResult, handleFirestoreError, OperationType } from './lib/firebase';
+import { onAuthStateChanged, type User } from 'firebase/auth';
+import { auth, db, loginWithGoogle, handleRedirectResult, handleFirestoreError, OperationType, syncUserProfile, isUserAdmin } from './lib/firebase';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
 import { Inventory } from './components/Inventory';
 import { Sales } from './components/Sales';
 import { Contacts } from './components/Contacts';
+import { AdminDashboard } from './components/AdminDashboard';
 import { Product, Sale, Contact, View } from './types';
-import { Gem } from 'lucide-react';
+import { Gem, ShieldCheck } from 'lucide-react';
+import { where } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function App() {
   const [user, setUser] = React.useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const [loginError, setLoginError] = React.useState<string | null>(null);
   const [showRedirectHelp, setShowRedirectHelp] = React.useState(false);
@@ -36,8 +39,13 @@ export default function App() {
     // Check for redirect result on initialization
     handleRedirectResult();
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
+      if (u) {
+        await syncUserProfile(u);
+        const adminStatus = await isUserAdmin(u);
+        setIsAdmin(adminStatus);
+      }
+      setUser(u);
       setLoading(false);
     });
     return () => unsubscribe();
@@ -57,7 +65,11 @@ export default function App() {
     if (!user) return;
 
     const unsubInventory = onSnapshot(
-      query(collection(db, 'inventory'), orderBy('createdAt', 'desc')),
+      query(
+        collection(db, 'inventory'), 
+        where('userId', '==', user.uid),
+        orderBy('createdAt', 'desc')
+      ),
       (snapshot) => {
         setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)));
       },
@@ -65,7 +77,11 @@ export default function App() {
     );
 
     const unsubSales = onSnapshot(
-      query(collection(db, 'sales'), orderBy('saleDate', 'desc')),
+      query(
+        collection(db, 'sales'), 
+        where('userId', '==', user.uid),
+        orderBy('saleDate', 'desc')
+      ),
       (snapshot) => {
         setSales(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Sale)));
       },
@@ -73,7 +89,11 @@ export default function App() {
     );
 
     const unsubContacts = onSnapshot(
-      query(collection(db, 'contacts'), orderBy('name', 'asc')),
+      query(
+        collection(db, 'contacts'), 
+        where('userId', '==', user.uid),
+        orderBy('name', 'asc')
+      ),
       (snapshot) => {
         setContacts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Contact)));
       },
@@ -173,17 +193,19 @@ export default function App() {
   }
 
   const renderView = () => {
+    if (!user) return null;
     switch (activeView) {
       case 'dashboard': return <Dashboard products={products} sales={sales} />;
-      case 'inventory': return <Inventory products={products} wholesalers={contacts.filter(c => c.type === 'wholesaler')} />;
-      case 'sales': return <Sales sales={sales} products={products} customers={contacts.filter(c => c.type === 'customer')} />;
-      case 'contacts': return <Contacts contacts={contacts} />;
+      case 'inventory': return <Inventory products={products} wholesalers={contacts.filter(c => c.type === 'wholesaler')} user={user} />;
+      case 'sales': return <Sales sales={sales} products={products} customers={contacts.filter(c => c.type === 'customer')} user={user} />;
+      case 'contacts': return <Contacts contacts={contacts} user={user} />;
+      case 'admin': return isAdmin ? <AdminDashboard /> : <Dashboard products={products} sales={sales} />;
       default: return <Dashboard products={products} sales={sales} />;
     }
   };
 
   return (
-    <Layout activeView={activeView} onViewChange={setActiveView}>
+    <Layout activeView={activeView} onViewChange={setActiveView} isAdmin={isAdmin}>
       <AnimatePresence mode="wait">
         {renderView()}
       </AnimatePresence>

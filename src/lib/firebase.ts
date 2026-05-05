@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, setPersistence, browserLocalPersistence, type User } from 'firebase/auth';
+import { getFirestore, doc, getDocFromServer, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
@@ -64,6 +64,32 @@ export async function logout() {
   } catch (error) {
     console.error('Logout failed', error);
   }
+}
+
+export async function syncUserProfile(user: User) {
+  const userRef = doc(db, 'users', user.uid);
+  const userDoc = await getDoc(userRef);
+  
+  const userData = {
+    email: user.email,
+    displayName: user.displayName || 'Anonymous User',
+    photoURL: user.photoURL || '',
+    lastLogin: serverTimestamp(),
+    isAdmin: user.email === 'sagarmailstop@gmail.com'
+  };
+
+  if (!userDoc.exists()) {
+    await setDoc(userRef, {
+      ...userData,
+      createdAt: serverTimestamp()
+    });
+  } else {
+    await setDoc(userRef, userData, { merge: true });
+  }
+}
+
+export async function isUserAdmin(user: User): Promise<boolean> {
+  return user.email === 'sagarmailstop@gmail.com';
 }
 
 export enum OperationType {

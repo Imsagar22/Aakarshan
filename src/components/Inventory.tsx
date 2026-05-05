@@ -5,12 +5,15 @@ import { formatCurrency, cn } from '../lib/utils';
 import { collection, addDoc, serverTimestamp, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 
+import { type User } from 'firebase/auth';
+
 interface InventoryProps {
   products: Product[];
   wholesalers: Contact[];
+  user: User;
 }
 
-export function Inventory({ products, wholesalers }: InventoryProps) {
+export function Inventory({ products, wholesalers, user }: InventoryProps) {
   const [isAdding, setIsAdding] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [filterStatus, setFilterStatus] = React.useState<'All' | 'In Stock' | 'Sold'>('All');
@@ -29,6 +32,7 @@ export function Inventory({ products, wholesalers }: InventoryProps) {
     const wholesaler = wholesalers.find(w => w.id === wholesalerId);
 
     const productData = {
+      userId: user.uid,
       name: formData.get('name') as string,
       category: formData.get('category') as string,
       wholesalerId,

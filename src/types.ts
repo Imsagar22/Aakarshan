@@ -1,5 +1,6 @@
 export interface Contact {
   id: string;
+  userId: string;
   name: string;
   type: 'wholesaler' | 'customer';
   email?: string;
@@ -9,6 +10,7 @@ export interface Contact {
 
 export interface Product {
   id: string;
+  userId: string;
   name: string;
   category: string;
   wholesalerId: string;
@@ -21,6 +23,7 @@ export interface Product {
 
 export interface Sale {
   id: string;
+  userId: string;
   productId: string;
   productName: string;
   customerId: string;
@@ -31,4 +34,22 @@ export interface Sale {
   createdAt: any;
 }
 
-export type View = 'dashboard' | 'inventory' | 'sales' | 'contacts';
+export interface AppUser {
+  id: string;
+  email: string;
+  displayName: string;
+  photoURL: string;
+  lastLogin: any;
+  createdAt: any;
+  isAdmin: boolean;
+}
+
+export interface AppMetrics {
+  totalUsers: number;
+  totalSalesCount: number;
+  totalInventoryValue: number;
+  totalRevenue: number;
+  updatedAt: any;
+}
+
+export type View = 'dashboard' | 'inventory' | 'sales' | 'contacts' | 'admin';

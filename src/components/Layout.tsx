@@ -7,7 +7,8 @@ import {
   Users, 
   LogOut,
   Menu,
-  X
+  X,
+  ShieldCheck
 } from 'lucide-react';
 import { auth, logout } from '../lib/firebase';
 import { View } from '../types';
@@ -17,9 +18,10 @@ interface LayoutProps {
   children?: React.ReactNode;
   activeView: View;
   onViewChange: (view: View) => void;
+  isAdmin: boolean;
 }
 
-export function Layout({ children, activeView, onViewChange }: LayoutProps) {
+export function Layout({ children, activeView, onViewChange, isAdmin }: LayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const user = auth.currentUser;
 
@@ -29,6 +31,10 @@ export function Layout({ children, activeView, onViewChange }: LayoutProps) {
     { id: 'sales', label: 'Sales', icon: ShoppingCart },
     { id: 'contacts', label: 'Contacts', icon: Users },
   ];
+
+  if (isAdmin) {
+    navItems.push({ id: 'admin', label: 'Admin Panel', icon: ShieldCheck });
+  }
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-brand-bg text-brand-ink">
