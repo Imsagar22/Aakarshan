@@ -1,0 +1,79 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Entity Validations ---
+
+    function isValidContact(data) {
+      return data.keys().hasAll(['name', 'type', 'createdAt']) &&
+             data.keys().size() >= 3 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
+             data.type in ['wholesaler', 'customer'] &&
+             data.createdAt == request.time;
+    }
+
+    function isValidProduct(data) {
+      return data.keys().hasAll(['name', 'category', 'wholesalerId', 'wholesalerName', 'cost', 'status', 'purchaseDate', 'createdAt']) &&
+             data.keys().size() >= 8 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
+             data.category is string && data.category.size() > 0 && data.category.size() <= 100 &&
+             isValidId(data.wholesalerId) &&
+             data.wholesalerName is string &&
+             data.cost is number && data.cost >= 0 &&
+             data.status in ['In Stock', 'Sold'] &&
+             data.purchaseDate is string &&
+             data.createdAt == request.time;
+    }
+
+    function isValidSale(data) {
+      return data.keys().hasAll(['productId', 'productName', 'customerId', 'customerName', 'retailPrice', 'costAtSale', 'saleDate', 'createdAt']) &&
+             data.keys().size() >= 8 &&
+             isValidId(data.productId) &&
+             isValidId(data.customerId) &&
+             data.retailPrice is number && data.retailPrice >= 0 &&
+             data.costAtSale is number && data.costAtSale >= 0 &&
+             data.saleDate is string &&
+             data.createdAt == request.time;
+    }
+
+    // --- Collections ---
+
+    match /contacts/{contactId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /inventory/{productId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /sales/{saleId} {
+      allow read, write: if isSignedIn();
+    }
+  }
+}

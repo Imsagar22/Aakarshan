@@ -1,0 +1,54 @@
+{
+  "entities": {
+    "contact": {
+      "title": "Contact",
+      "description": "A wholesaler or customer contact.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["wholesaler", "customer"] },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "type"]
+    },
+    "product": {
+      "title": "Product",
+      "description": "An item in the jewelry inventory.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "wholesalerId": { "type": "string" },
+        "wholesalerName": { "type": "string" },
+        "cost": { "type": "number" },
+        "purchaseDate": { "type": "string", "format": "date" },
+        "status": { "type": "string", "enum": ["In Stock", "Sold"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "category", "wholesalerId", "cost", "purchaseDate", "status"]
+    },
+    "sale": {
+      "title": "Sale",
+      "description": "A completed sale transaction.",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string" },
+        "productName": { "type": "string" },
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "retailPrice": { "type": "number" },
+        "costAtSale": { "type": "number" },
+        "saleDate": { "type": "string", "format": "date" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["productId", "customerId", "retailPrice", "costAtSale", "saleDate"]
+    }
+  },
+  "firestore": {
+    "contacts": { "schema": "contact", "description": "Directory of wholesalers and customers." },
+    "inventory": { "schema": "product", "description": "Active and sold product inventory." },
+    "sales": { "schema": "sale", "description": "Sales history records." }
+  }
+}
