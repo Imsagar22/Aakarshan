@@ -1,6 +1,5 @@
 {
   "name": "Aakarshan",
   "description": "Professional jewelry inventory and sales tracking.",
-  "requestFramePermissions": [],
-  "majorCapabilities": []
+  "requestFramePermissions": []
 }

@@ -1,32 +1,71 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Aakarshan | Jewelry Management</title>
     <script>
-      // Fix for "Cannot set property fetch of #<Window> which has only a getter"
-      // This happens when some code (polyfills, etc.) tries to overwrite a read-only fetch.
+      /**
+       * PATCH: JSON.parse
+       * Gracefully handle invalid JSON inputs like "undefined", common in some SDKs.
+       */
+      (function() {
+        const originalParse = JSON.parse;
+        JSON.parse = function(text, reviver) {
+          // Handle various forms of "undefined" or "null" that shouldn't throw
+          if (text === undefined || text === 'undefined') return undefined;
+          if (text === null || text === 'null') return null;
+          
+          try {
+            return originalParse(text, reviver);
+          } catch (e) {
+            // Final fallback check
+            const s = String(text).trim();
+            if (s === 'undefined') return undefined;
+            if (s === 'null') return null;
+            throw e;
+          }
+        };
+      })();
+
+      /**
+       * PATCH: window.fetch Read-Only
+       * Prevents "Uncaught TypeError: Cannot set property fetch of #<Window> which has only a getter"
+       * by attempting to define a setter that ignores assignments.
+       */
       (function() {
         try {
           const originalFetch = window.fetch;
-          // Check if we can actually redefine it
+          if (typeof originalFetch !== 'function') return;
+
           const descriptor = Object.getOwnPropertyDescriptor(window, 'fetch');
-          if (!descriptor || descriptor.configurable) {
-            Object.defineProperty(window, 'fetch', {
-              get: function() { return originalFetch; },
-              set: function(v) { 
-                console.warn('Something tried to override window.fetch. The assignment was ignored to prevent a crash.', v);
-              },
-              configurable: true,
-              enumerable: true
-            });
+          
+          // If we can't configure it and it doesn't have a setter, 
+          // we might be out of luck, but let's try to re-define it aggressively.
+          if (descriptor && !descriptor.configurable) {
+             // If already has a setter, we are probably okay (it won't throw on assignment)
+             if (descriptor.set) return;
+             // If it's a simple data property and not writable...
+             if (descriptor.writable === false) {
+               // We can't do anything if it's non-configurable and non-writable.
+               return;
+             }
           }
+
+          // Try to make it an accessor with a no-op setter
+          Object.defineProperty(window, 'fetch', {
+            get: function() { return originalFetch; },
+            set: function() { 
+              console.warn('Assignment to window.fetch ignored to prevent crash.');
+            },
+            configurable: true,
+            enumerable: true
+          });
         } catch (e) {
-          console.error('Failed to patch fetch:', e);
+          // Silent fail - we did our best to intercept the assignment crash
         }
       })();
     </script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aakarshan | Jewelry Management</title>
   </head>
   <body>
     <div id="root"></div>
