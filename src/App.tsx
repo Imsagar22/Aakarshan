@@ -11,7 +11,7 @@ import {
   orderBy 
 } from 'firebase/firestore';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth, db, loginWithGoogle, handleFirestoreError, OperationType } from './lib/firebase';
+import { auth, db, loginWithGoogle, handleRedirectResult, handleFirestoreError, OperationType } from './lib/firebase';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
 import { Inventory } from './components/Inventory';
@@ -25,6 +25,7 @@ export default function App() {
   const [user, setUser] = React.useState<User | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [loginError, setLoginError] = React.useState<string | null>(null);
+  const [showRedirectHelp, setShowRedirectHelp] = React.useState(false);
   const [activeView, setActiveView] = React.useState<View>('dashboard');
   
   const [products, setProducts] = React.useState<Product[]>([]);
@@ -32,6 +33,9 @@ export default function App() {
   const [contacts, setContacts] = React.useState<Contact[]>([]);
 
   React.useEffect(() => {
+    // Check for redirect result on initialization
+    handleRedirectResult();
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setLoading(false);
@@ -39,12 +43,13 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  const handleLogin = async () => {
+  const handleLogin = async (useRedirect = false) => {
     setLoginError(null);
     try {
-      await loginWithGoogle();
+      await loginWithGoogle(useRedirect);
     } catch (error: any) {
       setLoginError(error.message || 'Login failed');
+      setShowRedirectHelp(true);
     }
   };
 
@@ -132,15 +137,27 @@ export default function App() {
 
             <div className="space-y-4">
               <button 
-                onClick={handleLogin}
+                onClick={() => handleLogin(false)}
                 className="w-full flex items-center justify-center gap-4 bg-brand-surface py-5 px-6 rounded-3xl border border-brand-border shadow-sm hover:shadow-md transition-all font-bold text-xs tracking-widest uppercase text-brand-ink"
               >
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
                 Sign in with Google
               </button>
 
+              {showRedirectHelp && (
+                <div className="text-center space-y-3">
+                  <p className="text-[10px] text-brand-muted font-medium">Popup not loading? Try the alternative:</p>
+                  <button 
+                    onClick={() => handleLogin(true)}
+                    className="w-full py-4 text-[10px] font-bold uppercase tracking-widest text-brand-accent border border-brand-accent/20 rounded-2xl hover:bg-brand-accent/5 transition-colors"
+                  >
+                    Use Redirect Sign-In
+                  </button>
+                </div>
+              )}
+
               {loginError && (
-                <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-[10px] font-bold uppercase tracking-widest text-center">
+                <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-[10px] font-bold uppercase tracking-widest text-center leading-relaxed">
                   {loginError}
                 </div>
               )}

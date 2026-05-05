@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -8,9 +8,16 @@ export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth();
 setPersistence(auth, browserLocalPersistence).catch(err => console.error('Persistence error:', err));
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 
-export async function loginWithGoogle() {
+export async function loginWithGoogle(useRedirect = false) {
   try {
+    if (useRedirect) {
+      console.log('Initiating Google Sign-In with redirect...');
+      await signInWithRedirect(auth, googleProvider);
+      return;
+    }
+
     console.log('Initiating Google Sign-In with popup...');
     const result = await signInWithPopup(auth, googleProvider);
     console.log('Login successful:', result.user.email);
@@ -19,21 +26,35 @@ export async function loginWithGoogle() {
     console.error('Detailed login error:', {
       code: error.code,
       message: error.message,
-      customData: error.customData,
-      email: error.customData?.email
+      useRedirect
     });
     
     let message = `Login failed (${error.code || 'unknown'}): ${error.message || 'Unknown error'}`;
+    
     if (error.code === 'auth/popup-blocked') {
-      message = 'The sign-in popup was blocked by your browser. Please allow popups for this site and try again.';
-    } else if (error.code === 'auth/network-request-failed') {
-      message = 'Network error. This can happen if third-party cookies are blocked or you are offline.';
+      message = 'The sign-in popup was blocked. Please allow popups for this site, or try the "Redirect" option.';
+    } else if (error.code === 'auth/network-request-failed' || error.code === 'auth/internal-error') {
+      message = 'Connection failed. If you are in Incognito mode, third-party cookies might be blocked. Try allowing them or signing in from a standard window.';
     } else if (error.code === 'auth/operation-not-allowed') {
-      message = 'Google Sign-In is not enabled in the Firebase console. Please contact the administrator.';
+      message = 'Google Sign-In is not enabled in Firebase Console.';
     } else if (error.code === 'auth/unauthorized-domain') {
-      message = `This domain is not authorized for OAuth operations. Current domain: ${window.location.hostname}`;
+       message = `Domain ${window.location.hostname} is not authorized in Firebase Console. Please add it to your authorized domains.`;
     }
+    
     throw new Error(message);
+  }
+}
+
+export async function handleRedirectResult() {
+  try {
+    const result = await getRedirectResult(auth);
+    if (result) {
+      console.log('Redirect login successful:', result.user.email);
+    }
+    return result;
+  } catch (error: any) {
+    console.error('Redirect result error:', error);
+    return null;
   }
 }
 
