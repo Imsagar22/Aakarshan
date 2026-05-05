@@ -21,14 +21,18 @@ export function Contacts({ contacts, user }: ContactsProps) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     
-    const contactData = {
+    const contactData: any = {
       userId: user.uid,
       name: formData.get('name') as string,
       type: formData.get('type') as string,
-      email: formData.get('email') as string,
-      phone: formData.get('phone') as string,
       createdAt: serverTimestamp(),
     };
+
+    const email = formData.get('email') as string;
+    const phone = formData.get('phone') as string;
+    
+    if (email) contactData.email = email;
+    if (phone) contactData.phone = phone;
 
     try {
       await addDoc(collection(db, 'contacts'), contactData);
