@@ -24,6 +24,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function App() {
   const [user, setUser] = React.useState<User | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [loginError, setLoginError] = React.useState<string | null>(null);
   const [activeView, setActiveView] = React.useState<View>('dashboard');
   
   const [products, setProducts] = React.useState<Product[]>([]);
@@ -37,6 +38,15 @@ export default function App() {
     });
     return () => unsubscribe();
   }, []);
+
+  const handleLogin = async () => {
+    setLoginError(null);
+    try {
+      await loginWithGoogle();
+    } catch (error: any) {
+      setLoginError(error.message || 'Login failed');
+    }
+  };
 
   React.useEffect(() => {
     if (!user) return;
@@ -120,13 +130,21 @@ export default function App() {
               <p className="text-brand-muted mt-2 font-medium">Sign in to access your boutique dashboard</p>
             </div>
 
-            <button 
-              onClick={loginWithGoogle}
-              className="w-full flex items-center justify-center gap-4 bg-brand-surface py-5 px-6 rounded-3xl border border-brand-border shadow-sm hover:shadow-md transition-all font-bold text-xs tracking-widest uppercase text-brand-ink"
-            >
-              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
-              Sign in with Google
-            </button>
+            <div className="space-y-4">
+              <button 
+                onClick={handleLogin}
+                className="w-full flex items-center justify-center gap-4 bg-brand-surface py-5 px-6 rounded-3xl border border-brand-border shadow-sm hover:shadow-md transition-all font-bold text-xs tracking-widest uppercase text-brand-ink"
+              >
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
+                Sign in with Google
+              </button>
+
+              {loginError && (
+                <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-[10px] font-bold uppercase tracking-widest text-center">
+                  {loginError}
+                </div>
+              )}
+            </div>
 
             <div className="pt-12 text-center opacity-30">
               <p className="text-[10px] font-bold uppercase tracking-[0.3em]">Crafted for Curators & Artisans</p>

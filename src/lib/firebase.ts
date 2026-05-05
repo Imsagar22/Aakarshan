@@ -1,18 +1,39 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth();
+setPersistence(auth, browserLocalPersistence).catch(err => console.error('Persistence error:', err));
 export const googleProvider = new GoogleAuthProvider();
 
 export async function loginWithGoogle() {
   try {
-    await signInWithPopup(auth, googleProvider);
-  } catch (error) {
-    console.error('Login failed', error);
+    console.log('Initiating Google Sign-In with popup...');
+    const result = await signInWithPopup(auth, googleProvider);
+    console.log('Login successful:', result.user.email);
+    return result;
+  } catch (error: any) {
+    console.error('Detailed login error:', {
+      code: error.code,
+      message: error.message,
+      customData: error.customData,
+      email: error.customData?.email
+    });
+    
+    let message = `Login failed (${error.code || 'unknown'}): ${error.message || 'Unknown error'}`;
+    if (error.code === 'auth/popup-blocked') {
+      message = 'The sign-in popup was blocked by your browser. Please allow popups for this site and try again.';
+    } else if (error.code === 'auth/network-request-failed') {
+      message = 'Network error. This can happen if third-party cookies are blocked or you are offline.';
+    } else if (error.code === 'auth/operation-not-allowed') {
+      message = 'Google Sign-In is not enabled in the Firebase console. Please contact the administrator.';
+    } else if (error.code === 'auth/unauthorized-domain') {
+      message = `This domain is not authorized for OAuth operations. Current domain: ${window.location.hostname}`;
+    }
+    throw new Error(message);
   }
 }
 
