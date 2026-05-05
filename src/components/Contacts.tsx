@@ -57,6 +57,7 @@ export function Contacts({ contacts, user }: ContactsProps) {
           <p className="text-[10px] md:text-xs text-brand-muted mt-2 font-medium tracking-widest uppercase">Wholesalers & Customers</p>
         </div>
         <button 
+          id="new-contact-button"
           onClick={() => setIsAdding(true)}
           className="w-full sm:w-auto flex items-center justify-center gap-2 bg-brand-accent text-white px-8 py-3 rounded-full font-bold text-[11px] uppercase tracking-widest hover:scale-105 transition-all shadow-lg"
         >
@@ -70,7 +71,13 @@ export function Contacts({ contacts, user }: ContactsProps) {
           <div className="bg-white p-8 rounded-3xl w-full max-w-md shadow-2xl">
             <div className="flex items-center justify-between mb-6">
               <h3 className="font-display text-2xl font-bold">New Contact</h3>
-              <button onClick={() => setIsAdding(false)} className="opacity-40 hover:opacity-100 transition-opacity"><UserPlus className="rotate-45" /></button>
+              <button 
+                id="close-contact-modal"
+                onClick={() => setIsAdding(false)} 
+                className="opacity-40 hover:opacity-100 transition-opacity"
+              >
+                <UserPlus className="rotate-45" />
+              </button>
             </div>
             <form onSubmit={handleAddContact} className="space-y-4">
               <div>
@@ -102,7 +109,13 @@ export function Contacts({ contacts, user }: ContactsProps) {
                   <input type="tel" name="phone" className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" placeholder="+1..." />
                 </div>
               </div>
-              <button type="submit" className="w-full bg-brand-ink text-white py-4 rounded-2xl font-bold uppercase tracking-widest text-xs mt-4">Save Contact</button>
+              <button 
+                id="save-contact-button"
+                type="submit" 
+                className="w-full bg-brand-ink text-white py-4 rounded-2xl font-bold uppercase tracking-widest text-xs mt-4 hover:bg-brand-ink/90 transition-colors"
+              >
+                Save Contact
+              </button>
             </form>
           </div>
         </div>
