@@ -12,21 +12,12 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isVerified() {
-      // Relaxing email verification check as it can be flaky in some environments
-      return isSignedIn();
-    }
-
     function isAdmin() {
-      return isVerified() && request.auth.token.email == 'sagarmailstop@gmail.com';
+      return isSignedIn() && request.auth.token.email == 'sagarmailstop@gmail.com';
     }
 
     function isOwner(data) {
       return isSignedIn() && data.userId == request.auth.uid;
-    }
-
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
     function incoming() {
@@ -37,76 +28,32 @@ service cloud.firestore {
       return resource.data;
     }
 
-    // --- Entity Validations ---
-
-    function isValidContact(data) {
-      return data.keys().hasAll(['userId', 'name', 'type', 'createdAt']) &&
-             data.keys().size() >= 4 &&
-             data.userId == request.auth.uid &&
-             data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
-             data.type in ['wholesaler', 'customer'] &&
-             (!('email' in data) || (data.email is string && data.email.size() <= 256)) &&
-             (!('phone' in data) || (data.phone is string && data.phone.size() <= 32)) &&
-             data.createdAt == request.time;
-    }
-
-    function isValidProduct(data) {
-      return data.keys().hasAll(['userId', 'name', 'category', 'wholesalerId', 'wholesalerName', 'cost', 'status', 'purchaseDate', 'createdAt']) &&
-             data.keys().size() >= 9 &&
-             data.userId == request.auth.uid &&
-             data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
-             data.category is string && data.category.size() > 0 && data.category.size() <= 100 &&
-             isValidId(data.wholesalerId) &&
-             data.wholesalerName is string && data.wholesalerName.size() <= 200 &&
-             data.cost is number && data.cost >= 0 &&
-             data.status in ['In Stock', 'Sold'] &&
-             data.purchaseDate is string && data.purchaseDate.size() <= 32 &&
-             data.createdAt == request.time;
-    }
-
-    function isValidSale(data) {
-      return data.keys().hasAll(['userId', 'productId', 'productName', 'customerId', 'customerName', 'retailPrice', 'costAtSale', 'saleDate', 'createdAt']) &&
-             data.keys().size() >= 9 &&
-             data.userId == request.auth.uid &&
-             isValidId(data.productId) &&
-             data.productName is string && data.productName.size() <= 200 &&
-             isValidId(data.customerId) &&
-             data.customerName is string && data.customerName.size() <= 200 &&
-             data.retailPrice is number && data.retailPrice >= 0 &&
-             data.costAtSale is number && data.costAtSale >= 0 &&
-             data.saleDate is string && data.saleDate.size() <= 32 &&
-             data.createdAt == request.time;
-    }
-
     // --- Collections ---
 
     match /contacts/{contactId} {
       allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow get: if isSignedIn() && isValidId(contactId) && (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isVerified() && isValidId(contactId) && isValidContact(incoming());
-      allow update: if isVerified() && isValidId(contactId) && isOwner(existing()) && isValidContact(incoming());
-      allow delete: if isVerified() && isValidId(contactId) && isOwner(existing());
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
     match /inventory/{productId} {
       allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow get: if isSignedIn() && isValidId(productId) && (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isVerified() && isValidId(productId) && isValidProduct(incoming());
-      allow update: if isVerified() && isValidId(productId) && isOwner(existing()) && isValidProduct(incoming());
-      allow delete: if isVerified() && isValidId(productId) && isOwner(existing());
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
     match /sales/{saleId} {
       allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow get: if isSignedIn() && isValidId(saleId) && (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isVerified() && isValidId(saleId) && isValidSale(incoming());
-      allow update: if isVerified() && isValidId(saleId) && isOwner(existing()) && isValidSale(incoming());
-      allow delete: if isVerified() && isValidId(saleId) && isOwner(existing());
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
     match /users/{userId} {
-      allow read: if isVerified() && (request.auth.uid == userId || isAdmin());
-      allow write: if isVerified() && request.auth.uid == userId;
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow write: if isSignedIn() && request.auth.uid == userId;
     }
 
     match /metrics/{metricId} {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShoppingBag, ArrowRight, Calendar, User, IndianRupee, Search } from 'lucide-react';
+import { ShoppingBag, ArrowRight, Calendar, User as UserIcon, IndianRupee, Search } from 'lucide-react';
 import { Product, Contact, Sale } from '../types';
 import { formatCurrency, cn } from '../lib/utils';
 import { collection, addDoc, serverTimestamp, updateDoc, doc, runTransaction } from 'firebase/firestore';
@@ -142,7 +142,7 @@ export function Sales({ sales, products, customers, user }: SalesProps) {
                   <h4 className="font-serif italic text-lg sm:text-xl font-medium">{sale.productName}</h4>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
                     <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-brand-muted">
-                      <User size={12} /> {sale.customerName}
+                      <UserIcon size={12} /> {sale.customerName}
                     </span>
                     <span className="hidden sm:block w-1 h-1 rounded-full bg-brand-border" />
                     <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-brand-muted">
