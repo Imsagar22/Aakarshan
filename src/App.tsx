@@ -8,7 +8,7 @@ import {
   collection, 
   onSnapshot, 
   query, 
-  orderBy 
+  where 
 } from 'firebase/firestore';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { auth, db, loginWithGoogle, handleRedirectResult, handleFirestoreError, OperationType, syncUserProfile, isUserAdmin } from './lib/firebase';
@@ -20,7 +20,6 @@ import { Contacts } from './components/Contacts';
 import { AdminDashboard } from './components/AdminDashboard';
 import { Product, Sale, Contact, View } from './types';
 import { Gem, ShieldCheck } from 'lucide-react';
-import { where } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function App() {
@@ -67,8 +66,7 @@ export default function App() {
     const unsubInventory = onSnapshot(
       query(
         collection(db, 'inventory'), 
-        where('userId', '==', user.uid),
-        orderBy('createdAt', 'desc')
+        where('userId', '==', user.uid)
       ),
       (snapshot) => {
         setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)));
@@ -79,8 +77,7 @@ export default function App() {
     const unsubSales = onSnapshot(
       query(
         collection(db, 'sales'), 
-        where('userId', '==', user.uid),
-        orderBy('saleDate', 'desc')
+        where('userId', '==', user.uid)
       ),
       (snapshot) => {
         setSales(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Sale)));
@@ -91,8 +88,7 @@ export default function App() {
     const unsubContacts = onSnapshot(
       query(
         collection(db, 'contacts'), 
-        where('userId', '==', user.uid),
-        orderBy('name', 'asc')
+        where('userId', '==', user.uid)
       ),
       (snapshot) => {
         setContacts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Contact)));

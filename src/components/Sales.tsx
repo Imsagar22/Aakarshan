@@ -30,6 +30,7 @@ export function Sales({ sales, products, customers, user }: SalesProps) {
 
     if (!product || !customer) return;
 
+    console.log('Attempting to record sale transaction:', { productId, customerId });
     try {
       // Use transaction to ensure both documents are updated atomically
       await runTransaction(db, async (transaction) => {
@@ -49,17 +50,20 @@ export function Sales({ sales, products, customers, user }: SalesProps) {
           createdAt: serverTimestamp(),
         });
       });
-      
+      console.log('Sale transaction completed successfully');
       setIsRecording(false);
     } catch (error) {
+      console.error('Error recording sale:', error);
       handleFirestoreError(error, OperationType.WRITE, 'sales');
     }
   }
 
-  const filteredSales = sales.filter(s => 
-    s.productName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    s.customerName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredSales = sales
+    .filter(s => 
+      s.productName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      s.customerName.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => b.saleDate.localeCompare(a.saleDate));
 
   return (
     <div className="space-y-6">

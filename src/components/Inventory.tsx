@@ -18,12 +18,18 @@ export function Inventory({ products, wholesalers, user }: InventoryProps) {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [filterStatus, setFilterStatus] = React.useState<'All' | 'In Stock' | 'Sold'>('All');
 
-  const filteredProducts = products.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         p.category.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'All' || p.status === filterStatus;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredProducts = products
+    .filter(p => {
+      const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                           p.category.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = filterStatus === 'All' || p.status === filterStatus;
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+      const aTime = (a.createdAt as any)?.seconds || 0;
+      const bTime = (b.createdAt as any)?.seconds || 0;
+      return bTime - aTime;
+    });
 
   async function handleAddProduct(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -43,10 +49,13 @@ export function Inventory({ products, wholesalers, user }: InventoryProps) {
       createdAt: serverTimestamp(),
     };
 
+    console.log('Attempting to add product:', productData);
     try {
-      await addDoc(collection(db, 'inventory'), productData);
+      const docRef = await addDoc(collection(db, 'inventory'), productData);
+      console.log('Product added successfully with ID:', docRef.id);
       setIsAdding(false);
     } catch (error) {
+      console.error('Error adding product:', error);
       handleFirestoreError(error, OperationType.WRITE, 'inventory');
     }
   }

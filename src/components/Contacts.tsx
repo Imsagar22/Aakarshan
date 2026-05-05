@@ -34,20 +34,25 @@ export function Contacts({ contacts, user }: ContactsProps) {
     if (email) contactData.email = email;
     if (phone) contactData.phone = phone;
 
+    console.log('Attempting to add contact:', contactData);
     try {
-      await addDoc(collection(db, 'contacts'), contactData);
+      const docRef = await addDoc(collection(db, 'contacts'), contactData);
+      console.log('Contact added successfully with ID:', docRef.id);
       setIsAdding(false);
     } catch (error) {
+      console.error('Error adding contact:', error);
       handleFirestoreError(error, OperationType.WRITE, 'contacts');
     }
   }
 
-  const filteredContacts = contacts.filter(c => {
-    const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         c.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = filterType === 'All' || c.type === filterType;
-    return matchesSearch && matchesType;
-  });
+  const filteredContacts = contacts
+    .filter(c => {
+      const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                           c.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesType = filterType === 'All' || c.type === filterType;
+      return matchesSearch && matchesType;
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <div className="space-y-6">
