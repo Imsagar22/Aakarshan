@@ -18,7 +18,7 @@ import { Inventory } from './components/Inventory';
 import { Sales } from './components/Sales';
 import { Contacts } from './components/Contacts';
 import { AdminDashboard } from './components/AdminDashboard';
-import { Product, Sale, Contact, View } from './types';
+import { Product, Sale, Contact, View, InventoryLog } from './types';
 import { Gem, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -33,6 +33,7 @@ export default function App() {
   const [products, setProducts] = React.useState<Product[]>([]);
   const [sales, setSales] = React.useState<Sale[]>([]);
   const [contacts, setContacts] = React.useState<Contact[]>([]);
+  const [inventoryLogs, setInventoryLogs] = React.useState<InventoryLog[]>([]);
 
   React.useEffect(() => {
     // Check for redirect result on initialization
@@ -96,10 +97,22 @@ export default function App() {
       (error) => handleFirestoreError(error, OperationType.LIST, 'contacts')
     );
 
+    const unsubLogs = onSnapshot(
+      query(
+        collection(db, 'inventory_logs'),
+        where('userId', '==', user.uid)
+      ),
+      (snapshot) => {
+        setInventoryLogs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InventoryLog)));
+      },
+      (error) => handleFirestoreError(error, OperationType.LIST, 'inventory_logs')
+    );
+
     return () => {
       unsubInventory();
       unsubSales();
       unsubContacts();
+      unsubLogs();
     };
   }, [user]);
 
@@ -192,7 +205,7 @@ export default function App() {
     if (!user) return null;
     switch (activeView) {
       case 'dashboard': return <Dashboard products={products} sales={sales} />;
-      case 'inventory': return <Inventory products={products} wholesalers={contacts.filter(c => c.type === 'wholesaler')} user={user} />;
+      case 'inventory': return <Inventory products={products} wholesalers={contacts.filter(c => c.type === 'wholesaler')} user={user} sales={sales} logs={inventoryLogs} />;
       case 'sales': return <Sales sales={sales} products={products} customers={contacts.filter(c => c.type === 'customer')} user={user} />;
       case 'contacts': return <Contacts contacts={contacts} user={user} />;
       case 'admin': return isAdmin ? <AdminDashboard /> : <Dashboard products={products} sales={sales} />;

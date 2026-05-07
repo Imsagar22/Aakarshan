@@ -23,11 +23,7 @@ export async function loginWithGoogle(useRedirect = false) {
     console.log('Login successful:', result.user.email);
     return result;
   } catch (error: any) {
-    console.error('Detailed login error:', {
-      code: error.code,
-      message: error.message,
-      useRedirect
-    });
+    console.error('Detailed login error message:', error.message);
     
     let message = `Login failed (${error.code || 'unknown'}): ${error.message || 'Unknown error'}`;
     
@@ -53,7 +49,7 @@ export async function handleRedirectResult() {
     }
     return result;
   } catch (error: any) {
-    console.error('Redirect result error:', error);
+    console.error('Redirect result error message:', error.message);
     return null;
   }
 }
@@ -62,7 +58,7 @@ export async function logout() {
   try {
     await auth.signOut();
   } catch (error) {
-    console.error('Logout failed', error);
+    console.error('Logout failed message:', error instanceof Error ? error.message : String(error));
   }
 }
 
