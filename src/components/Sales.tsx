@@ -528,7 +528,10 @@ export function Sales({ sales, products, customers, user }: SalesProps) {
 
       {/* List */}
       <div className="space-y-6">
-          {filteredSales.map((sale) => (
+          {filteredSales.map((sale) => {
+            const isOverdue = sale.dueDate && sale.paymentStatus === 'Credit' && sale.dueDate < new Date().toISOString().split('T')[0];
+            
+            return (
             <div key={sale.id} className="flex flex-col lg:flex-row lg:items-center justify-between p-6 sm:p-8 bg-brand-surface/30 rounded-[2rem] border border-brand-border group hover:border-brand-accent/30 transition-all gap-6">
               <div className="flex items-center gap-4 sm:gap-6">
                 <div className="shrink-0 w-12 h-12 sm:w-16 sm:h-16 rounded-2xl sm:rounded-[1.5rem] bg-white border border-brand-border flex items-center justify-center text-brand-accent shadow-sm">
@@ -550,8 +553,12 @@ export function Sales({ sales, products, customers, user }: SalesProps) {
                     </span>
                     <span className="hidden sm:block w-1 h-1 rounded-full bg-brand-border" />
                     {sale.dueDate && sale.paymentStatus === 'Credit' && (
-                      <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-orange-600">
-                        Due: {sale.dueDate}
+                      <span className={cn(
+                        "flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border",
+                        isOverdue ? "bg-red-50 text-red-600 border-red-100 animate-pulse" : "text-brand-muted border-brand-border"
+                      )}>
+                        <Calendar size={10} />
+                        {isOverdue ? 'Overdue' : 'Due'}: {sale.dueDate}
                       </span>
                     )}
                     {sale.dueDate && sale.paymentStatus === 'Credit' && (
@@ -599,7 +606,7 @@ export function Sales({ sales, products, customers, user }: SalesProps) {
                       className="flex items-center justify-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-700 transition-colors shadow-sm"
                     >
                       <CheckCircle2 size={14} />
-                      Pay Now
+                      Mark as Paid
                     </button>
                   )}
                   {sale.paymentStatus === 'Cash' && sale.returnStatus !== 'Returned' && (
@@ -645,7 +652,7 @@ export function Sales({ sales, products, customers, user }: SalesProps) {
                 </div>
               </div>
             </div>
-          ))}
+          )})}
           {filteredSales.length === 0 && (
             <div className="py-20 text-center opacity-30 italic text-sm">No sales records found</div>
           )}

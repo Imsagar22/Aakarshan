@@ -28,18 +28,28 @@ service cloud.firestore {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
+    function isAdmin() {
+      return isSignedIn() && 
+             request.auth.token.email_verified == true &&
+             (request.auth.token.email == 'sagarmailstop@gmail.com' ||
+              (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isAdmin', false) == true));
+    }
+
     // --- Validation Blueprints ---
 
     function isValidContact(data) {
       return data.userId == request.auth.uid 
         && data.name is string && data.name.size() > 0 && data.name.size() <= 200
-        && data.type in ['wholesaler', 'customer'];
+        && data.type in ['wholesaler', 'customer']
+        && (data.get('email', '') == '' || data.email is string)
+        && (data.get('phone', '') == '' || data.phone is string);
     }
 
     function isValidProduct(data) {
       return data.userId == request.auth.uid
         && data.name is string && data.name.size() > 0 && data.name.size() <= 200
-        && data.category is string
+        && data.category is string && data.category.size() <= 100
         && data.cost is number && data.cost >= 0
         && data.quantity is number && data.quantity >= 0
         && data.status in ['In Stock', 'Sold'];
@@ -51,7 +61,9 @@ service cloud.firestore {
         && data.customerId is string
         && data.retailPrice is number && data.retailPrice >= 0
         && data.costAtSale is number && data.costAtSale >= 0
-        && data.quantity is number && data.quantity > 0;
+        && data.quantity is number && data.quantity > 0
+        && (data.get('returnStatus', '') == '' || data.returnStatus in ['Returned', 'Partially Returned'])
+        && (data.get('returnedQuantity', 0) is number);
     }
 
     function isValidInventoryLog(data) {
@@ -97,11 +109,14 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      allow get: if isSignedIn() && request.auth.uid == userId;
+      allow list: if isAdmin();
+      allow create, update: if isSignedIn() && request.auth.uid == userId 
+        && (incoming().isAdmin == (request.auth.token.email == 'sagarmailstop@gmail.com'));
     }
 
     match /metrics/{metricId} {
-      allow read: if isSignedIn();
+      allow read: if isAdmin();
       allow write: if false;
     }
 
