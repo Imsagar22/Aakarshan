@@ -17,6 +17,7 @@ interface InventoryProps {
 
 export function Inventory({ products, wholesalers, user, sales, logs }: InventoryProps) {
   const [isAdding, setIsAdding] = React.useState(false);
+  const [editingProduct, setEditingProduct] = React.useState<Product | null>(null);
   const [historyProductId, setHistoryProductId] = React.useState<string | null>(null);
   const [isAdjusting, setIsAdjusting] = React.useState<string | null>(null);
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -73,6 +74,33 @@ export function Inventory({ products, wholesalers, user, sales, logs }: Inventor
       setIsAdding(false);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'inventory');
+    }
+  }
+
+  async function handleUpdateProduct(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!editingProduct) return;
+
+    const formData = new FormData(e.currentTarget);
+    const wholesalerId = formData.get('wholesalerId') as string;
+    const wholesaler = wholesalers.find(w => w.id === wholesalerId);
+
+    const updateData = {
+      name: formData.get('name') as string,
+      category: formData.get('category') as string,
+      wholesalerId,
+      wholesalerName: wholesaler?.name || 'Unknown',
+      cost: Number(formData.get('cost')),
+      quantity: Number(formData.get('quantity')),
+      purchaseDate: formData.get('purchaseDate') as string,
+      status: Number(formData.get('quantity')) > 0 ? 'In Stock' : 'Sold',
+    };
+
+    try {
+      await updateDoc(doc(db, 'inventory', editingProduct.id), updateData);
+      setEditingProduct(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `inventory/${editingProduct.id}`);
     }
   }
 
@@ -150,6 +178,9 @@ export function Inventory({ products, wholesalers, user, sales, logs }: Inventor
     return bTime - aTime;
   }) : [];
 
+  const totalInventoryValue = filteredProducts.reduce((sum, p) => sum + ((Number(p.cost) || 0) * (Number(p.quantity) || 0)), 0);
+  const totalItems = filteredProducts.reduce((sum, p) => sum + (Number(p.quantity) || 0), 0);
+
   return (
     <div className="space-y-6">
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 border-b border-brand-border pb-6">
@@ -165,6 +196,18 @@ export function Inventory({ products, wholesalers, user, sales, logs }: Inventor
           Add Piece
         </button>
       </header>
+
+      <div className="flex flex-col sm:flex-row gap-4 items-center bg-brand-surface/40 p-6 rounded-3xl border border-brand-border/40">
+        <div className="flex-1">
+          <p className="text-[10px] uppercase font-bold tracking-widest text-brand-muted mb-1">List Summary</p>
+          <p className="text-sm font-medium text-brand-ink">Showing <span className="text-brand-accent font-bold">{filteredProducts.length}</span> types of pieces • <span className="text-brand-accent font-bold">{totalItems}</span> units in total</p>
+        </div>
+        <div className="h-px w-full sm:w-px sm:h-8 bg-brand-border/50" />
+        <div className="text-center sm:text-right">
+          <p className="text-[10px] uppercase font-bold tracking-widest text-brand-muted mb-1">Stock Value (@ Cost)</p>
+          <p className="text-2xl font-serif italic text-brand-accent">{formatCurrency(totalInventoryValue)}</p>
+        </div>
+      </div>
 
       {isAdding && (
         <div className="fixed inset-0 bg-brand-ink/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
@@ -206,6 +249,51 @@ export function Inventory({ products, wholesalers, user, sales, logs }: Inventor
                 </div>
               </div>
               <button type="submit" className="w-full bg-brand-accent text-white py-4 rounded-2xl font-bold uppercase tracking-widest text-xs mt-4 shadow-lg shadow-brand-accent/20">Save Product</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Product Modal */}
+      {editingProduct && (
+        <div className="fixed inset-0 bg-brand-ink/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white p-8 rounded-3xl w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-display text-2xl font-bold">Edit Product</h3>
+              <button onClick={() => setEditingProduct(null)} className="opacity-40 hover:opacity-100 transition-opacity"><Plus className="rotate-45" /></button>
+            </div>
+            <form onSubmit={handleUpdateProduct} className="space-y-4">
+              <div>
+                <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Product Name</label>
+                <input required name="name" defaultValue={editingProduct.name} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5 focus:outline-brand-accent" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Category</label>
+                  <input required name="category" defaultValue={editingProduct.category} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Wholesaler</label>
+                  <select required name="wholesalerId" defaultValue={editingProduct.wholesalerId} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5">
+                    {wholesalers.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Quantity</label>
+                  <input required type="number" min="0" name="quantity" defaultValue={editingProduct.quantity} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Cost per unit (INR)</label>
+                  <input required type="number" step="0.01" name="cost" defaultValue={editingProduct.cost} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Purchase Date</label>
+                  <input required type="date" name="purchaseDate" defaultValue={editingProduct.purchaseDate} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" />
+                </div>
+              </div>
+              <button type="submit" className="w-full bg-brand-accent text-white py-4 rounded-2xl font-bold uppercase tracking-widest text-xs mt-4 shadow-lg shadow-brand-accent/20">Update Product</button>
             </form>
           </div>
         </div>
@@ -271,6 +359,13 @@ export function Inventory({ products, wholesalers, user, sales, logs }: Inventor
             </div>
             
             <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-brand-surface">
+              <button 
+                onClick={() => setEditingProduct(p)}
+                className="flex items-center gap-2 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-brand-ink bg-brand-surface rounded-xl hover:bg-brand-surface/80"
+              >
+                <Edit2 size={14} />
+                Edit
+              </button>
               <button 
                 onClick={() => setHistoryProductId(p.id)}
                 className="flex items-center gap-2 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-brand-accent bg-brand-accent/5 rounded-xl transition-colors hover:bg-brand-accent/10"
@@ -338,6 +433,13 @@ export function Inventory({ products, wholesalers, user, sales, logs }: Inventor
                   </td>
                   <td className="px-8 py-6 text-right">
                     <div className="flex justify-end gap-1">
+                      <button 
+                        onClick={() => setEditingProduct(p)}
+                        className="p-2 text-brand-muted hover:text-brand-ink transition-colors mb-1"
+                        title="Edit Product"
+                      >
+                        <Edit2 size={16} />
+                      </button>
                       <button 
                         onClick={() => setHistoryProductId(p.id)}
                         className="p-2 text-brand-muted hover:text-brand-accent transition-colors mb-1"

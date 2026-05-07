@@ -21,22 +21,24 @@ interface DashboardProps {
 }
 
 export function Dashboard({ products, sales }: DashboardProps) {
-  const totalSpent = products.reduce((sum, p) => sum + p.cost, 0);
-  const totalRevenue = sales.reduce((sum, s) => sum + s.retailPrice, 0);
-  const totalCashRevenue = sales.filter(s => s.paymentStatus === 'Cash').reduce((sum, s) => sum + s.retailPrice, 0);
-  const totalOutstandingCredit = sales.filter(s => s.paymentStatus === 'Credit').reduce((sum, s) => sum + s.retailPrice, 0);
-  const totalCostOfSold = sales.reduce((sum, s) => sum + (s.costAtSale * (s.quantity || 1)), 0);
-  const netProfit = totalRevenue - totalCostOfSold;
+  const totalRevenue = sales.reduce((sum, s) => sum + (Number(s.retailPrice) || 0), 0);
+  const totalCashRevenue = sales.filter(s => s.paymentStatus === 'Cash').reduce((sum, s) => sum + (Number(s.retailPrice) || 0), 0);
+  const totalOutstandingCredit = sales.filter(s => s.paymentStatus === 'Credit').reduce((sum, s) => sum + (Number(s.retailPrice) || 0), 0);
+  
+  const currentStockValue = products.reduce((sum, p) => sum + ((Number(p.cost) || 0) * (Number(p.quantity) || 0)), 0);
+  const costOfGoodsSold = sales.reduce((sum, s) => sum + ((Number(s.costAtSale) || 0) * (Number(s.quantity) || 1)), 0);
+  const totalInvestment = currentStockValue + costOfGoodsSold;
+  const netProfit = totalRevenue - costOfGoodsSold;
   
   const profitMargin = totalRevenue > 0 
-    ? ((totalRevenue - totalCostOfSold) / totalRevenue) * 100 
+    ? ((totalRevenue - costOfGoodsSold) / totalRevenue) * 100 
     : 0;
 
   const stats = [
-    { label: 'Total Revenue', value: formatCurrency(totalRevenue), icon: ShoppingCart, color: 'bg-emerald-500' },
-    { label: 'Cash Received', value: formatCurrency(totalCashRevenue), icon: IndianRupee, color: 'bg-blue-500' },
-    { label: 'Outstanding Credit', value: formatCurrency(totalOutstandingCredit), icon: TrendingDown, color: 'bg-orange-500' },
-    { label: 'Net Profit', value: formatCurrency(netProfit), icon: TrendingUp, color: 'bg-indigo-500' },
+    { label: 'Total Revenue', value: formatCurrency(totalRevenue) },
+    { label: 'Stock Value (Real-time)', value: formatCurrency(currentStockValue) },
+    { label: 'Total Investment', value: formatCurrency(totalInvestment) },
+    { label: 'Net Profit', value: formatCurrency(netProfit) },
   ];
 
   // Data for charts
@@ -66,9 +68,35 @@ export function Dashboard({ products, sales }: DashboardProps) {
         {stats.map((stat, i) => (
           <div key={i} className="bg-white p-8 rounded-[2rem] border border-brand-border/50 shadow-sm transition-all hover:shadow-md">
             <p className="text-[10px] text-brand-muted font-bold uppercase tracking-[0.2em] mb-2">{stat.label}</p>
-            <p className="text-3xl font-light text-brand-ink leading-none">{stat.value}</p>
+            <p className={cn(
+              "text-3xl font-light leading-none",
+              stat.label === 'Net Profit' ? (netProfit >= 0 ? "text-emerald-600" : "text-red-500") : "text-brand-ink"
+            )}>{stat.value}</p>
           </div>
         ))}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="bg-brand-surface p-6 rounded-2xl border border-brand-border/30 flex justify-between items-center">
+          <div>
+            <p className="text-[9px] uppercase font-bold tracking-widest text-brand-muted mb-1">Cash Performance</p>
+            <p className="text-xl font-bold text-emerald-600">{formatCurrency(totalCashRevenue)}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[9px] uppercase font-bold tracking-widest text-brand-muted mb-1">Uncollected Credit</p>
+            <p className="text-xl font-bold text-orange-500">{formatCurrency(totalOutstandingCredit)}</p>
+          </div>
+        </div>
+        <div className="bg-brand-surface p-6 rounded-2xl border border-brand-border/30 flex justify-between items-center">
+          <div>
+            <p className="text-[9px] uppercase font-bold tracking-widest text-brand-muted mb-1">Total Assets (Stock + Cash)</p>
+            <p className="text-xl font-bold text-brand-ink">{formatCurrency(currentStockValue + totalCashRevenue)}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[9px] uppercase font-bold tracking-widest text-brand-muted mb-1">Profit Margin</p>
+            <p className="text-xl font-bold text-brand-accent">{profitMargin.toFixed(1)}%</p>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
@@ -94,8 +122,8 @@ export function Dashboard({ products, sales }: DashboardProps) {
                     return a.dueDate.localeCompare(b.dueDate);
                   })
                   .map((sale, i) => {
-                    const profit = sale.retailPrice - (sale.costAtSale * (sale.quantity || 1));
-                    const margin = sale.retailPrice > 0 ? (profit / sale.retailPrice) * 100 : 0;
+                    const profit = (Number(sale.retailPrice) || 0) - ((Number(sale.costAtSale) || 0) * (Number(sale.quantity) || 1));
+                    const margin = (Number(sale.retailPrice) || 0) > 0 ? (profit / (Number(sale.retailPrice) || 0)) * 100 : 0;
                     
                     return (
                       <tr key={i} className="bg-white border-y border-brand-border shadow-sm group">
@@ -106,7 +134,7 @@ export function Dashboard({ products, sales }: DashboardProps) {
                           <p className="text-sm text-brand-ink">{sale.productName}</p>
                         </td>
                         <td className="px-6 py-4 border-y border-brand-border">
-                          <p className="text-sm font-mono font-bold text-orange-600">{formatCurrency(sale.retailPrice)}</p>
+                          <p className="text-sm font-mono font-bold text-orange-600">{formatCurrency(Number(sale.retailPrice) || 0)}</p>
                         </td>
                         <td className="px-6 py-4 border-y border-brand-border">
                           <span className={cn(
@@ -183,8 +211,8 @@ export function Dashboard({ products, sales }: DashboardProps) {
             <h3 className="font-serif text-2xl italic mb-8">Recent Activity</h3>
             <div className="space-y-6">
               {sales.slice(0, 5).map((sale, i) => {
-                const profit = sale.retailPrice - (sale.costAtSale * (sale.quantity || 1));
-                const margin = sale.retailPrice > 0 ? (profit / sale.retailPrice) * 100 : 0;
+                const profit = (Number(sale.retailPrice) || 0) - ((Number(sale.costAtSale) || 0) * (Number(sale.quantity) || 1));
+                const margin = (Number(sale.retailPrice) || 0) > 0 ? (profit / (Number(sale.retailPrice) || 0)) * 100 : 0;
                 
                 return (
                   <div key={i} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 bg-brand-surface/40 rounded-2xl border border-brand-border/50 group hover:border-brand-accent/30 transition-all gap-4">
@@ -195,7 +223,7 @@ export function Dashboard({ products, sales }: DashboardProps) {
                       )} />
                       <div>
                         <p className="text-sm font-semibold text-brand-ink">{sale.productName}</p>
-                        <p className="text-[10px] text-brand-muted uppercase font-bold tracking-widest mt-1">{sale.quantity || 1} { (sale.quantity || 1) === 1 ? 'unit' : 'units'} sold to {sale.customerName}</p>
+                        <p className="text-[10px] text-brand-muted uppercase font-bold tracking-widest mt-1">{Number(sale.quantity) || 1} { (Number(sale.quantity) || 1) === 1 ? 'unit' : 'units'} sold to {sale.customerName}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-6 text-left sm:text-right w-full sm:w-auto border-t sm:border-t-0 pt-4 sm:pt-0 border-brand-border/30">
@@ -207,7 +235,7 @@ export function Dashboard({ products, sales }: DashboardProps) {
                         )}>{margin.toFixed(1)}%</p>
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-brand-accent">+{formatCurrency(sale.retailPrice)}</p>
+                        <p className="text-sm font-bold text-brand-accent">+{formatCurrency(Number(sale.retailPrice) || 0)}</p>
                         <p className={cn(
                           "text-[10px] uppercase font-bold tracking-widest",
                           sale.paymentStatus === 'Cash' ? "text-emerald-600" : "text-orange-600"

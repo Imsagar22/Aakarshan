@@ -33,6 +33,8 @@ export interface Sale {
   costAtSale: number;
   quantity: number;
   paymentStatus: 'Cash' | 'Credit';
+  returnStatus?: 'Returned' | 'Partially Returned';
+  returnedQuantity?: number;
   dueDate?: string;
   saleDate: string;
   createdAt: any;
