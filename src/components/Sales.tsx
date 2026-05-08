@@ -16,10 +16,12 @@ interface SalesProps {
 
 export function Sales({ sales, products, customers, user }: SalesProps) {
   const [isRecording, setIsRecording] = React.useState(false);
+  const [selectedProductId, setSelectedProductId] = React.useState<string>('');
   const [editingSale, setEditingSale] = React.useState<Sale | null>(null);
   const [searchTerm, setSearchTerm] = React.useState('');
 
   const inStockProducts = products.filter(p => p.status === 'In Stock');
+  const selectedProduct = products.find(p => p.id === selectedProductId);
 
   async function handleRecordSale(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -34,6 +36,8 @@ export function Sales({ sales, products, customers, user }: SalesProps) {
     console.log('Attempting to record sale transaction:', { productId, customerId });
     const saleQuantity = Number(formData.get('quantity'));
     const unitRetailPrice = Number(formData.get('retailPrice'));
+    const unitCostPrice = Number(formData.get('costAtSale'));
+    const paymentStatus = formData.get('paymentStatus') as 'Paid' | 'Credit';
 
     try {
       // Use transaction to ensure both documents are updated atomically
@@ -61,8 +65,9 @@ export function Sales({ sales, products, customers, user }: SalesProps) {
           customerName: customer.name,
           quantity: saleQuantity,
           retailPrice: unitRetailPrice,
-          costAtSale: product.cost,
+          costAtSale: unitCostPrice,
           saleDate: formData.get('saleDate') as string,
+          paymentStatus,
           createdAt: serverTimestamp(),
         });
       });
@@ -111,7 +116,9 @@ export function Sales({ sales, products, customers, user }: SalesProps) {
     if (!customer) return;
 
     const unitRetailPrice = Number(formData.get('retailPrice'));
+    const unitCostPrice = Number(formData.get('costAtSale'));
     const newSaleQuantity = Number(formData.get('quantity'));
+    const paymentStatus = formData.get('paymentStatus') as 'Paid' | 'Credit';
 
     try {
       await runTransaction(db, async (transaction) => {
@@ -140,7 +147,9 @@ export function Sales({ sales, products, customers, user }: SalesProps) {
           customerName: customer.name,
           quantity: newSaleQuantity,
           retailPrice: unitRetailPrice,
+          costAtSale: unitCostPrice,
           saleDate: formData.get('saleDate') as string,
+          paymentStatus,
         });
       });
       setEditingSale(null);
@@ -182,7 +191,13 @@ export function Sales({ sales, products, customers, user }: SalesProps) {
             <form onSubmit={handleRecordSale} className="space-y-4">
               <div>
                 <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Select Product</label>
-                <select required name="productId" className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5">
+                <select 
+                  required 
+                  name="productId" 
+                  value={selectedProductId}
+                  onChange={(e) => setSelectedProductId(e.target.value)}
+                  className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5"
+                >
                   <option value="">Choose an item...</option>
                   {inStockProducts.map(p => (
                     <option key={p.id} value={p.id}>{p.name} ({formatCurrency(p.cost)} cost)</option>
@@ -204,13 +219,32 @@ export function Sales({ sales, products, customers, user }: SalesProps) {
                   <input required type="number" step="0.01" name="retailPrice" className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" placeholder="0.00" />
                 </div>
                 <div>
+                  <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Unit Cost (INR)</label>
+                  <input required type="number" step="0.01" name="costAtSale" defaultValue={selectedProduct?.cost || 0} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" placeholder="0.00" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
                   <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Quantity</label>
                   <input required type="number" min="1" name="quantity" defaultValue="1" className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" />
                 </div>
+                <div>
+                  <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Sale Date</label>
+                  <input required type="date" name="saleDate" defaultValue={new Date().toISOString().split('T')[0]} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" />
+                </div>
               </div>
               <div>
-                <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Sale Date</label>
-                <input required type="date" name="saleDate" defaultValue={new Date().toISOString().split('T')[0]} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" />
+                <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Payment Status</label>
+                <div className="flex gap-4">
+                  <label className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border border-brand-ink/5 bg-brand-bg cursor-pointer has-[:checked]:border-brand-accent has-[:checked]:bg-brand-accent/5 transition-all">
+                    <input required type="radio" name="paymentStatus" value="Paid" defaultChecked className="hidden" />
+                    <span className="text-xs font-bold uppercase tracking-widest">Paid</span>
+                  </label>
+                  <label className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border border-brand-ink/5 bg-brand-bg cursor-pointer has-[:checked]:border-brand-accent has-[:checked]:bg-brand-accent/5 transition-all">
+                    <input required type="radio" name="paymentStatus" value="Credit" className="hidden" />
+                    <span className="text-xs font-bold uppercase tracking-widest text-amber-600">Credit</span>
+                  </label>
+                </div>
               </div>
               <button type="submit" className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold uppercase tracking-widest text-xs mt-4">Confirm Sale</button>
             </form>
@@ -245,13 +279,32 @@ export function Sales({ sales, products, customers, user }: SalesProps) {
                   <input required type="number" step="0.01" name="retailPrice" defaultValue={editingSale.retailPrice} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" placeholder="0.00" />
                 </div>
                 <div>
+                  <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Unit Cost (INR)</label>
+                  <input required type="number" step="0.01" name="costAtSale" defaultValue={editingSale.costAtSale} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" placeholder="0.00" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
                   <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Quantity</label>
                   <input required type="number" min="1" name="quantity" defaultValue={editingSale.quantity || 1} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" />
                 </div>
+                <div>
+                  <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Sale Date</label>
+                  <input required type="date" name="saleDate" defaultValue={editingSale.saleDate} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" />
+                </div>
               </div>
               <div>
-                <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Sale Date</label>
-                <input required type="date" name="saleDate" defaultValue={editingSale.saleDate} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" />
+                <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Payment Status</label>
+                <div className="flex gap-4">
+                  <label className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border border-brand-ink/5 bg-brand-bg cursor-pointer has-[:checked]:border-brand-accent has-[:checked]:bg-brand-accent/5 transition-all">
+                    <input required type="radio" name="paymentStatus" value="Paid" defaultChecked={editingSale.paymentStatus === 'Paid'} className="hidden" />
+                    <span className="text-xs font-bold uppercase tracking-widest">Paid</span>
+                  </label>
+                  <label className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border border-brand-ink/5 bg-brand-bg cursor-pointer has-[:checked]:border-brand-accent has-[:checked]:bg-brand-accent/5 transition-all">
+                    <input required type="radio" name="paymentStatus" value="Credit" defaultChecked={editingSale.paymentStatus === 'Credit'} className="hidden" />
+                    <span className="text-xs font-bold uppercase tracking-widest text-amber-600">Credit</span>
+                  </label>
+                </div>
               </div>
               <button type="submit" className="w-full bg-brand-accent text-white py-4 rounded-2xl font-bold uppercase tracking-widest text-xs mt-4">Update Sale</button>
             </form>
@@ -291,6 +344,13 @@ export function Sales({ sales, products, customers, user }: SalesProps) {
                     <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-brand-muted">
                       <Calendar size={12} /> {sale.saleDate}
                     </span>
+                    <span className="hidden sm:block w-1 h-1 rounded-full bg-brand-border" />
+                    <span className={cn(
+                      "inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest",
+                      sale.paymentStatus === 'Paid' ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
+                    )}>
+                      {sale.paymentStatus}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -299,6 +359,10 @@ export function Sales({ sales, products, customers, user }: SalesProps) {
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-muted mb-2">Total Sale</p>
                   <p className="text-xl sm:text-2xl font-light text-brand-ink">{formatCurrency(sale.retailPrice * (sale.quantity || 1))}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-muted mb-2">Total Cost</p>
+                  <p className="text-xl sm:text-2xl font-light text-brand-muted">{formatCurrency(sale.costAtSale * (sale.quantity || 1))}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-accent mb-2">Net Profit</p>

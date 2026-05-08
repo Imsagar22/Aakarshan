@@ -33,6 +33,7 @@ export interface Sale {
   retailPrice: number;
   costAtSale: number;
   saleDate: string;
+  paymentStatus: 'Paid' | 'Credit';
   createdAt: any;
 }
 

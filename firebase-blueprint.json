@@ -46,9 +46,10 @@
         "retailPrice": { "type": "number" },
         "costAtSale": { "type": "number" },
         "saleDate": { "type": "string", "format": "date" },
+        "paymentStatus": { "type": "string", "enum": ["Paid", "Credit"] },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["userId", "productId", "customerId", "quantity", "retailPrice", "costAtSale", "saleDate"]
+      "required": ["userId", "productId", "customerId", "quantity", "retailPrice", "costAtSale", "saleDate", "paymentStatus"]
     },
     "userProfile": {
       "title": "User Profile",
