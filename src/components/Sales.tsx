@@ -1,8 +1,8 @@
 import React from 'react';
-import { ShoppingBag, ArrowRight, Calendar, User as UserIcon, IndianRupee, Search } from 'lucide-react';
+import { ShoppingBag, ArrowRight, Calendar, User as UserIcon, IndianRupee, Search, Trash2, Edit2 } from 'lucide-react';
 import { Product, Contact, Sale } from '../types';
 import { formatCurrency, cn } from '../lib/utils';
-import { collection, addDoc, serverTimestamp, updateDoc, doc, runTransaction } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, updateDoc, doc, runTransaction, deleteDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 
 import { type User } from 'firebase/auth';
@@ -16,6 +16,7 @@ interface SalesProps {
 
 export function Sales({ sales, products, customers, user }: SalesProps) {
   const [isRecording, setIsRecording] = React.useState(false);
+  const [editingSale, setEditingSale] = React.useState<Sale | null>(null);
   const [searchTerm, setSearchTerm] = React.useState('');
 
   const inStockProducts = products.filter(p => p.status === 'In Stock');
@@ -31,20 +32,35 @@ export function Sales({ sales, products, customers, user }: SalesProps) {
     if (!product || !customer) return;
 
     console.log('Attempting to record sale transaction:', { productId, customerId });
+    const saleQuantity = Number(formData.get('quantity'));
+    const unitRetailPrice = Number(formData.get('retailPrice'));
+
     try {
       // Use transaction to ensure both documents are updated atomically
       await runTransaction(db, async (transaction) => {
         const productRef = doc(db, 'inventory', productId);
         const saleRef = doc(collection(db, 'sales'));
 
-        transaction.update(productRef, { status: 'Sold' });
+        const currentQuantity = product.quantity || 0;
+        const newQuantity = currentQuantity - saleQuantity;
+        
+        if (newQuantity < 0) {
+          throw new Error('Not enough items in stock');
+        }
+
+        transaction.update(productRef, { 
+          quantity: newQuantity,
+          status: newQuantity > 0 ? 'In Stock' : 'Sold' 
+        });
+        
         transaction.set(saleRef, {
           userId: user.uid,
           productId,
           productName: product.name,
           customerId,
           customerName: customer.name,
-          retailPrice: Number(formData.get('retailPrice')),
+          quantity: saleQuantity,
+          retailPrice: unitRetailPrice,
           costAtSale: product.cost,
           saleDate: formData.get('saleDate') as string,
           createdAt: serverTimestamp(),
@@ -55,6 +71,81 @@ export function Sales({ sales, products, customers, user }: SalesProps) {
     } catch (error) {
       console.error('Error recording sale:', error);
       handleFirestoreError(error, OperationType.WRITE, 'sales');
+    }
+  }
+
+  async function handleDeleteSale(sale: Sale) {
+    if (!confirm('Are you sure you want to delete this sale record? This will return the item to inventory.')) return;
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const productRef = doc(db, 'inventory', sale.productId);
+        const saleRef = doc(db, 'sales', sale.id);
+
+        const productSnap = await transaction.get(productRef);
+        if (productSnap.exists()) {
+          const currentQty = productSnap.data().quantity || 0;
+          transaction.update(productRef, { 
+            quantity: currentQty + (sale.quantity || 1),
+            status: 'In Stock' 
+          });
+        }
+        
+        transaction.delete(saleRef);
+      });
+      console.log('Sale deleted successfully');
+    } catch (error) {
+      console.error('Error deleting sale:', error);
+      handleFirestoreError(error, OperationType.DELETE, `sales/${sale.id}`);
+    }
+  }
+
+  async function handleEditSale(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!editingSale) return;
+
+    const formData = new FormData(e.currentTarget);
+    const customerId = formData.get('customerId') as string;
+    const customer = customers.find(c => c.id === customerId);
+
+    if (!customer) return;
+
+    const unitRetailPrice = Number(formData.get('retailPrice'));
+    const newSaleQuantity = Number(formData.get('quantity'));
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const saleRef = doc(db, 'sales', editingSale.id);
+        const productRef = doc(db, 'inventory', editingSale.productId);
+        
+        const productSnap = await transaction.get(productRef);
+        if (productSnap.exists()) {
+          const currentStock = productSnap.data().quantity || 0;
+          const oldSaleQuantity = editingSale.quantity || 1;
+          const diff = newSaleQuantity - oldSaleQuantity;
+          const updatedStock = currentStock - diff;
+
+          if (updatedStock < 0) {
+            throw new Error('Not enough items in stock to update quantity');
+          }
+
+          transaction.update(productRef, {
+            quantity: updatedStock,
+            status: updatedStock > 0 ? 'In Stock' : 'Sold'
+          });
+        }
+
+        transaction.update(saleRef, {
+          customerId,
+          customerName: customer.name,
+          quantity: newSaleQuantity,
+          retailPrice: unitRetailPrice,
+          saleDate: formData.get('saleDate') as string,
+        });
+      });
+      setEditingSale(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `sales/${editingSale.id}`);
     }
   }
 
@@ -109,15 +200,60 @@ export function Sales({ sales, products, customers, user }: SalesProps) {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Retail Price (INR)</label>
+                  <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Unit Price (INR)</label>
                   <input required type="number" step="0.01" name="retailPrice" className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" placeholder="0.00" />
                 </div>
                 <div>
-                  <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Sale Date</label>
-                  <input required type="date" name="saleDate" defaultValue={new Date().toISOString().split('T')[0]} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" />
+                  <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Quantity</label>
+                  <input required type="number" min="1" name="quantity" defaultValue="1" className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" />
                 </div>
               </div>
+              <div>
+                <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Sale Date</label>
+                <input required type="date" name="saleDate" defaultValue={new Date().toISOString().split('T')[0]} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" />
+              </div>
               <button type="submit" className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold uppercase tracking-widest text-xs mt-4">Confirm Sale</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {editingSale && (
+        <div className="fixed inset-0 bg-brand-ink/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white p-8 rounded-3xl w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-display text-2xl font-bold">Edit Transaction</h3>
+              <button onClick={() => setEditingSale(null)} className="opacity-40 hover:opacity-100 transition-opacity"><ArrowRight className="rotate-45" /></button>
+            </div>
+            <form onSubmit={handleEditSale} className="space-y-4">
+              <div>
+                <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Product</label>
+                <div className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5 opacity-50">
+                  {editingSale.productName}
+                </div>
+                <p className="text-[9px] mt-1 text-brand-muted italic">Product cannot be changed. Delete and re-record if needed.</p>
+              </div>
+              <div>
+                <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Customer</label>
+                <select required name="customerId" defaultValue={editingSale.customerId} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5">
+                  {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Unit Price (INR)</label>
+                  <input required type="number" step="0.01" name="retailPrice" defaultValue={editingSale.retailPrice} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" placeholder="0.00" />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Quantity</label>
+                  <input required type="number" min="1" name="quantity" defaultValue={editingSale.quantity || 1} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" />
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Sale Date</label>
+                <input required type="date" name="saleDate" defaultValue={editingSale.saleDate} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" />
+              </div>
+              <button type="submit" className="w-full bg-brand-accent text-white py-4 rounded-2xl font-bold uppercase tracking-widest text-xs mt-4">Update Sale</button>
             </form>
           </div>
         </div>
@@ -143,7 +279,10 @@ export function Sales({ sales, products, customers, user }: SalesProps) {
                   <ShoppingBag size={20} className="sm:w-6 sm:h-6" />
                 </div>
                 <div>
-                  <h4 className="font-serif italic text-lg sm:text-xl font-medium">{sale.productName}</h4>
+                  <h4 className="font-serif italic text-lg sm:text-xl font-medium">
+                    {sale.productName} 
+                    <span className="ml-2 text-xs font-sans not-italic text-brand-muted uppercase tracking-widest">({sale.quantity || 1} units)</span>
+                  </h4>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
                     <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-brand-muted">
                       <UserIcon size={12} /> {sale.customerName}
@@ -158,12 +297,26 @@ export function Sales({ sales, products, customers, user }: SalesProps) {
               
               <div className="grid grid-cols-2 lg:flex lg:items-center gap-8 lg:gap-12 text-left lg:text-right border-t lg:border-t-0 pt-6 lg:pt-0 border-brand-border/30">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-muted mb-2">Sale Price</p>
-                  <p className="text-xl sm:text-2xl font-light text-brand-ink">{formatCurrency(sale.retailPrice)}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-muted mb-2">Total Sale</p>
+                  <p className="text-xl sm:text-2xl font-light text-brand-ink">{formatCurrency(sale.retailPrice * (sale.quantity || 1))}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-accent mb-2">Net Profit</p>
-                  <p className="text-xl sm:text-2xl font-semibold text-brand-accent">{formatCurrency(sale.retailPrice - sale.costAtSale)}</p>
+                  <p className="text-xl sm:text-2xl font-semibold text-brand-accent">{formatCurrency((sale.retailPrice - sale.costAtSale) * (sale.quantity || 1))}</p>
+                </div>
+                <div className="col-span-2 lg:col-auto flex lg:flex-col justify-end gap-2 pt-4 lg:pt-0 border-t lg:border-t-0 border-brand-border/30">
+                  <button 
+                    onClick={() => setEditingSale(sale)}
+                    className="p-3 text-brand-muted hover:text-brand-accent transition-colors bg-white lg:bg-transparent rounded-xl"
+                  >
+                    <Edit2 size={18} />
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteSale(sale)}
+                    className="p-3 text-brand-muted hover:text-red-600 transition-colors bg-white lg:bg-transparent rounded-xl"
+                  >
+                    <Trash2 size={18} />
+                  </button>
                 </div>
               </div>
             </div>

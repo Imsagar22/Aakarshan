@@ -25,11 +25,12 @@
         "wholesalerId": { "type": "string" },
         "wholesalerName": { "type": "string" },
         "cost": { "type": "number" },
+        "quantity": { "type": "number" },
         "purchaseDate": { "type": "string", "format": "date" },
         "status": { "type": "string", "enum": ["In Stock", "Sold"] },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["userId", "name", "category", "wholesalerId", "cost", "purchaseDate", "status"]
+      "required": ["userId", "name", "category", "wholesalerId", "cost", "quantity", "purchaseDate", "status"]
     },
     "sale": {
       "title": "Sale",
@@ -41,12 +42,13 @@
         "productName": { "type": "string" },
         "customerId": { "type": "string" },
         "customerName": { "type": "string" },
+        "quantity": { "type": "number" },
         "retailPrice": { "type": "number" },
         "costAtSale": { "type": "number" },
         "saleDate": { "type": "string", "format": "date" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["userId", "productId", "customerId", "retailPrice", "costAtSale", "saleDate"]
+      "required": ["userId", "productId", "customerId", "quantity", "retailPrice", "costAtSale", "saleDate"]
     },
     "userProfile": {
       "title": "User Profile",

@@ -15,6 +15,7 @@ interface InventoryProps {
 
 export function Inventory({ products, wholesalers, user }: InventoryProps) {
   const [isAdding, setIsAdding] = React.useState(false);
+  const [editingProduct, setEditingProduct] = React.useState<Product | null>(null);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [filterStatus, setFilterStatus] = React.useState<'All' | 'In Stock' | 'Sold'>('All');
 
@@ -44,8 +45,9 @@ export function Inventory({ products, wholesalers, user }: InventoryProps) {
       wholesalerId,
       wholesalerName: wholesaler?.name || 'Unknown',
       cost: Number(formData.get('cost')),
+      quantity: Number(formData.get('quantity')),
       purchaseDate: formData.get('purchaseDate') as string,
-      status: 'In Stock',
+      status: Number(formData.get('quantity')) > 0 ? 'In Stock' : 'Sold',
       createdAt: serverTimestamp(),
     };
 
@@ -57,6 +59,33 @@ export function Inventory({ products, wholesalers, user }: InventoryProps) {
     } catch (error) {
       console.error('Error adding product:', error);
       handleFirestoreError(error, OperationType.WRITE, 'inventory');
+    }
+  }
+
+  async function handleEditProduct(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!editingProduct) return;
+
+    const formData = new FormData(e.currentTarget);
+    const wholesalerId = formData.get('wholesalerId') as string;
+    const wholesaler = wholesalers.find(w => w.id === wholesalerId);
+
+    const productData = {
+      name: formData.get('name') as string,
+      category: formData.get('category') as string,
+      wholesalerId,
+      wholesalerName: wholesaler?.name || 'Unknown',
+      cost: Number(formData.get('cost')),
+      quantity: Number(formData.get('quantity')),
+      purchaseDate: formData.get('purchaseDate') as string,
+      status: Number(formData.get('quantity')) > 0 ? 'In Stock' : 'Sold',
+    };
+
+    try {
+      await updateDoc(doc(db, 'inventory', editingProduct.id), productData);
+      setEditingProduct(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `inventory/${editingProduct.id}`);
     }
   }
 
@@ -116,11 +145,60 @@ export function Inventory({ products, wholesalers, user }: InventoryProps) {
                   <input required type="number" step="0.01" name="cost" className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" placeholder="0.00" />
                 </div>
                 <div>
-                  <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Purchase Date</label>
-                  <input required type="date" name="purchaseDate" defaultValue={new Date().toISOString().split('T')[0]} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" />
+                  <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Quantity</label>
+                  <input required type="number" min="0" name="quantity" defaultValue="1" className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" />
                 </div>
               </div>
+              <div>
+                <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Purchase Date</label>
+                <input required type="date" name="purchaseDate" defaultValue={new Date().toISOString().split('T')[0]} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" />
+              </div>
               <button type="submit" className="w-full bg-brand-accent text-white py-4 rounded-2xl font-bold uppercase tracking-widest text-xs mt-4 shadow-lg shadow-brand-accent/20">Save Product</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {editingProduct && (
+        <div className="fixed inset-0 bg-brand-ink/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white p-8 rounded-3xl w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-display text-2xl font-bold">Edit Inventory Item</h3>
+              <button onClick={() => setEditingProduct(null)} className="opacity-40 hover:opacity-100 transition-opacity"><Plus className="rotate-45" /></button>
+            </div>
+            <form onSubmit={handleEditProduct} className="space-y-4">
+              <div>
+                <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Product Name</label>
+                <input required name="name" defaultValue={editingProduct.name} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5 focus:outline-brand-accent" placeholder="e.g. Diamond Solitaire Ring" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Category</label>
+                  <input required name="category" defaultValue={editingProduct.category} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" placeholder="e.g. Ring" />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Wholesaler</label>
+                  <select required name="wholesalerId" defaultValue={editingProduct.wholesalerId} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5">
+                    {wholesalers.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                    {wholesalers.length === 0 && <option disabled>No wholesalers found</option>}
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Cost (INR)</label>
+                  <input required type="number" step="0.01" name="cost" defaultValue={editingProduct.cost} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" placeholder="0.00" />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Quantity</label>
+                  <input required type="number" min="0" name="quantity" defaultValue={editingProduct.quantity} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" />
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Purchase Date</label>
+                <input required type="date" name="purchaseDate" defaultValue={editingProduct.purchaseDate} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" />
+              </div>
+              <button type="submit" className="w-full bg-brand-accent text-white py-4 rounded-2xl font-bold uppercase tracking-widest text-xs mt-4 shadow-lg shadow-brand-accent/20">Update Product</button>
             </form>
           </div>
         </div>
@@ -172,8 +250,8 @@ export function Inventory({ products, wholesalers, user }: InventoryProps) {
             
             <div className="flex justify-between items-end border-t border-brand-surface pt-4">
               <div>
-                <p className="text-[9px] text-brand-muted uppercase tracking-wider mb-1">Wholesaler</p>
-                <p className="text-xs font-medium">{p.wholesalerName}</p>
+                <p className="text-[9px] text-brand-muted uppercase tracking-wider mb-1">Wholesaler / Qty</p>
+                <p className="text-xs font-medium">{p.wholesalerName} <span className="opacity-50">({p.quantity || 0} left)</span></p>
               </div>
               <div className="text-right">
                 <p className="text-[9px] text-brand-muted uppercase tracking-wider mb-1">Cost</p>
@@ -182,6 +260,13 @@ export function Inventory({ products, wholesalers, user }: InventoryProps) {
             </div>
             
             <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-brand-surface">
+              <button 
+                onClick={() => setEditingProduct(p)}
+                className="flex items-center gap-2 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-brand-accent bg-brand-accent/5 rounded-xl"
+              >
+                <Edit2 size={14} />
+                Edit
+              </button>
               <button 
                 onClick={() => handleDelete(p.id)}
                 className="flex items-center gap-2 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-red-600 bg-red-50 rounded-xl"
@@ -206,6 +291,7 @@ export function Inventory({ products, wholesalers, user }: InventoryProps) {
                 <th className="px-8 py-5 font-semibold">Category</th>
                 <th className="px-8 py-5 font-semibold">Wholesaler</th>
                 <th className="px-8 py-5 font-semibold text-right">Cost</th>
+                <th className="px-8 py-5 font-semibold text-center">Stock</th>
                 <th className="px-8 py-5 font-semibold text-center">Status</th>
                 <th className="px-8 py-5 font-semibold text-right">Actions</th>
               </tr>
@@ -222,6 +308,7 @@ export function Inventory({ products, wholesalers, user }: InventoryProps) {
                   </td>
                   <td className="px-8 py-6 text-sm">{p.wholesalerName}</td>
                   <td className="px-8 py-6 text-sm font-mono text-right">{formatCurrency(p.cost)}</td>
+                  <td className="px-8 py-6 text-center text-sm font-bold">{p.quantity || 0}</td>
                   <td className="px-8 py-6 text-center">
                     <span className={cn(
                       "inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest",
@@ -232,9 +319,14 @@ export function Inventory({ products, wholesalers, user }: InventoryProps) {
                     </span>
                   </td>
                   <td className="px-8 py-6 text-right">
-                    <button onClick={() => handleDelete(p.id)} className="p-2 text-brand-muted hover:text-red-600 transition-colors">
-                      <Trash2 size={16} />
-                    </button>
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => setEditingProduct(p)} className="p-2 text-brand-muted hover:text-brand-accent transition-colors">
+                        <Edit2 size={16} />
+                      </button>
+                      <button onClick={() => handleDelete(p.id)} className="p-2 text-brand-muted hover:text-red-600 transition-colors">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

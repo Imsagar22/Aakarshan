@@ -1,7 +1,7 @@
 import React from 'react';
-import { UserPlus, Mail, Phone, Building2, User as UserIcon, Trash2, Search } from 'lucide-react';
+import { UserPlus, Mail, Phone, Building2, User as UserIcon, Trash2, Search, Edit2 } from 'lucide-react';
 import { Contact } from '../types';
-import { collection, addDoc, serverTimestamp, deleteDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { cn } from '../lib/utils';
 
@@ -14,6 +14,7 @@ interface ContactsProps {
 
 export function Contacts({ contacts, user }: ContactsProps) {
   const [isAdding, setIsAdding] = React.useState(false);
+  const [editingContact, setEditingContact] = React.useState<Contact | null>(null);
   const [filterType, setFilterType] = React.useState<'All' | 'wholesaler' | 'customer'>('All');
   const [searchTerm, setSearchTerm] = React.useState('');
 
@@ -42,6 +43,31 @@ export function Contacts({ contacts, user }: ContactsProps) {
     } catch (error) {
       console.error('Error adding contact:', error);
       handleFirestoreError(error, OperationType.WRITE, 'contacts');
+    }
+  }
+
+  async function handleEditContact(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!editingContact) return;
+
+    const formData = new FormData(e.currentTarget);
+    
+    const contactData: any = {
+      name: formData.get('name') as string,
+      type: formData.get('type') as string,
+    };
+
+    const email = formData.get('email') as string;
+    const phone = formData.get('phone') as string;
+    
+    contactData.email = email || null;
+    contactData.phone = phone || null;
+
+    try {
+      await updateDoc(doc(db, 'contacts', editingContact.id), contactData);
+      setEditingContact(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `contacts/${editingContact.id}`);
     }
   }
 
@@ -126,6 +152,59 @@ export function Contacts({ contacts, user }: ContactsProps) {
         </div>
       )}
 
+      {editingContact && (
+        <div className="fixed inset-0 bg-brand-ink/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white p-8 rounded-3xl w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-display text-2xl font-bold">Edit Contact</h3>
+              <button 
+                onClick={() => setEditingContact(null)} 
+                className="opacity-40 hover:opacity-100 transition-opacity"
+              >
+                <UserPlus className="rotate-45" />
+              </button>
+            </div>
+            <form onSubmit={handleEditContact} className="space-y-4">
+              <div>
+                <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Full Name / Company</label>
+                <input required name="name" defaultValue={editingContact.name} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" placeholder="Name" />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Contact Type</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="flex items-center gap-2 p-3 rounded-xl border border-brand-ink/5 bg-brand-bg cursor-pointer has-[:checked]:border-brand-accent has-[:checked]:bg-brand-accent/5 transition-all">
+                    <input required type="radio" name="type" value="wholesaler" className="hidden" defaultChecked={editingContact.type === 'wholesaler'} />
+                    <Building2 size={16} />
+                    <span className="text-xs font-bold uppercase tracking-widest">Wholesaler</span>
+                  </label>
+                  <label className="flex items-center gap-2 p-3 rounded-xl border border-brand-ink/5 bg-brand-bg cursor-pointer has-[:checked]:border-brand-accent has-[:checked]:bg-brand-accent/5 transition-all">
+                    <input required type="radio" name="type" value="customer" className="hidden" defaultChecked={editingContact.type === 'customer'} />
+                    <UserIcon size={16} />
+                    <span className="text-xs font-bold uppercase tracking-widest">Customer</span>
+                  </label>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Email</label>
+                  <input type="email" name="email" defaultValue={editingContact.email || ''} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" placeholder="email@example.com" />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase font-bold tracking-widest opacity-40 mb-2 block">Phone</label>
+                  <input type="tel" name="phone" defaultValue={editingContact.phone || ''} className="w-full bg-brand-bg px-4 py-3 rounded-xl border border-brand-ink/5" placeholder="+1..." />
+                </div>
+              </div>
+              <button 
+                type="submit" 
+                className="w-full bg-brand-ink text-white py-4 rounded-2xl font-bold uppercase tracking-widest text-xs mt-4 hover:bg-brand-ink/90 transition-colors"
+              >
+                Update Contact
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Tabs & Search */}
       <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">
@@ -183,7 +262,13 @@ export function Contacts({ contacts, user }: ContactsProps) {
               )}
             </div>
 
-            <div className="mt-6 pt-6 border-t border-brand-ink/5 flex justify-end">
+            <div className="mt-6 pt-6 border-t border-brand-ink/5 flex justify-end gap-2">
+              <button 
+                onClick={() => setEditingContact(contact)}
+                className="p-2 text-brand-ink/20 hover:text-brand-accent transition-colors"
+              >
+                <Edit2 size={16} />
+              </button>
               <button 
                 onClick={async () => {
                    if(confirm('Delete this contact?')) {
