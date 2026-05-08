@@ -16,7 +16,6 @@ export interface Product {
   wholesalerId: string;
   wholesalerName: string;
   cost: number;
-  quantity: number;
   status: 'In Stock' | 'Sold';
   purchaseDate: string;
   createdAt: any;
@@ -31,11 +30,6 @@ export interface Sale {
   customerName: string;
   retailPrice: number;
   costAtSale: number;
-  quantity: number;
-  paymentStatus: 'Cash' | 'Credit';
-  returnStatus?: 'Returned' | 'Partially Returned';
-  returnedQuantity?: number;
-  dueDate?: string;
   saleDate: string;
   createdAt: any;
 }
@@ -56,17 +50,6 @@ export interface AppMetrics {
   totalInventoryValue: number;
   totalRevenue: number;
   updatedAt: any;
-}
-
-export interface InventoryLog {
-  id: string;
-  userId: string;
-  productId: string;
-  type: 'sale' | 'restock' | 'adjustment';
-  quantityChange: number;
-  note: string;
-  date: string;
-  createdAt: any;
 }
 
 export type View = 'dashboard' | 'inventory' | 'sales' | 'contacts' | 'admin';

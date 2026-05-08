@@ -40,6 +40,7 @@ export function Contacts({ contacts, user }: ContactsProps) {
       console.log('Contact added successfully with ID:', docRef.id);
       setIsAdding(false);
     } catch (error) {
+      console.error('Error adding contact:', error);
       handleFirestoreError(error, OperationType.WRITE, 'contacts');
     }
   }

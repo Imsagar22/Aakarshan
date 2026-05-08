@@ -72,21 +72,6 @@
         "totalInventoryValue": { "type": "number" },
         "updatedAt": { "type": "string", "format": "date-time" }
       }
-    },
-    "inventoryLog": {
-      "title": "Inventory Log",
-      "description": "A log of inventory changes.",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string" },
-        "productId": { "type": "string" },
-        "type": { "type": "string", "enum": ["sale", "restock", "adjustment"] },
-        "quantityChange": { "type": "number" },
-        "note": { "type": "string" },
-        "date": { "type": "string", "format": "date" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["userId", "productId", "type", "quantityChange", "date"]
     }
   },
   "firestore": {
@@ -94,7 +79,6 @@
     "inventory": { "schema": "product", "description": "Active and sold product inventory." },
     "sales": { "schema": "sale", "description": "Sales history records." },
     "users": { "schema": "userProfile", "description": "User profile records." },
-    "metrics": { "schema": "appMetrics", "description": "Global dashboard metrics." },
-    "inventory_logs": { "schema": "inventoryLog", "description": "History of stock adjustments." }
+    "metrics": { "schema": "appMetrics", "description": "Global dashboard metrics." }
   }
 }
