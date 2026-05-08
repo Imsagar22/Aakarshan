@@ -22,8 +22,12 @@ interface DashboardProps {
 
 export function Dashboard({ products, sales }: DashboardProps) {
   const totalSpent = products.reduce((sum, p) => sum + p.cost, 0);
-  const totalRevenue = sales.reduce((sum, s) => sum + s.retailPrice, 0);
-  const totalCostOfSold = sales.reduce((sum, s) => sum + s.costAtSale, 0);
+  const totalRevenue = sales.reduce((sum, s) => sum + (s.retailPrice * (s.quantity || 1)), 0);
+  const totalCostOfSold = sales.reduce((sum, s) => sum + (s.costAtSale * (s.quantity || 1)), 0);
+  const totalCreditSales = sales
+    .filter(s => s.paymentStatus === 'Credit')
+    .reduce((sum, s) => sum + (s.retailPrice * (s.quantity || 1)), 0);
+  
   const netProfit = totalRevenue - totalCostOfSold;
   
   const profitMargin = totalRevenue > 0 
@@ -31,10 +35,11 @@ export function Dashboard({ products, sales }: DashboardProps) {
     : 0;
 
   const stats = [
-    { label: 'Total Inventory Cost', value: formatCurrency(totalSpent), icon: IndianRupee, color: 'bg-blue-500' },
-    { label: 'Total Revenue', value: formatCurrency(totalRevenue), icon: ShoppingCart, color: 'bg-emerald-500' },
-    { label: 'Net Profit', value: formatCurrency(netProfit), icon: TrendingUp, color: 'bg-indigo-500' },
-    { label: 'Avg. Profit Margin', value: `${profitMargin.toFixed(1)}%`, icon: Gem, color: 'bg-amber-500' },
+    { label: 'Inventory Cost', value: formatCurrency(totalSpent), color: 'bg-blue-500' },
+    { label: 'Total Revenue', value: formatCurrency(totalRevenue), color: 'bg-emerald-500' },
+    { label: 'Total Credit', value: formatCurrency(totalCreditSales), color: 'bg-amber-500' },
+    { label: 'Net Profit', value: formatCurrency(netProfit), color: 'bg-indigo-500' },
+    { label: 'Profit Margin', value: `${profitMargin.toFixed(1)}%`, color: 'bg-indigo-500' },
   ];
 
   // Data for charts
@@ -59,7 +64,7 @@ export function Dashboard({ products, sales }: DashboardProps) {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
         {stats.map((stat, i) => (
           <div key={i} className="bg-white p-8 rounded-[2rem] border border-brand-border/50 shadow-sm transition-all hover:shadow-md">
             <p className="text-[10px] text-brand-muted font-bold uppercase tracking-[0.2em] mb-2">{stat.label}</p>
@@ -111,8 +116,8 @@ export function Dashboard({ products, sales }: DashboardProps) {
                   <p className="text-[10px] text-brand-muted uppercase font-bold tracking-widest mt-1">Sold to {sale.customerName}</p>
                 </div>
                 <div className="text-left sm:text-right w-full sm:w-auto border-t sm:border-t-0 pt-4 sm:pt-0 border-brand-border/30">
-                  <p className="text-sm font-bold text-brand-accent">+{formatCurrency(sale.retailPrice)}</p>
-                  <p className="text-[10px] text-brand-muted font-medium opacity-60">Profit: {formatCurrency(sale.retailPrice - sale.costAtSale)}</p>
+                  <p className="text-sm font-bold text-brand-accent">+{formatCurrency(sale.retailPrice * (sale.quantity || 1))}</p>
+                  <p className="text-[10px] text-brand-muted font-medium opacity-60">Profit: {formatCurrency((sale.retailPrice - sale.costAtSale) * (sale.quantity || 1))}</p>
                 </div>
               </div>
             ))}
