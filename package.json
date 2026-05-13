@@ -19,7 +19,8 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.12.7",
-    "tailwind-merge": "^3.0.1"
+    "tailwind-merge": "^3.0.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@firebase/eslint-plugin-security-rules": "^0.0.2",

@@ -35,10 +35,10 @@ export function Dashboard({ products, sales }: DashboardProps) {
     : 0;
 
   const stats = [
-    { label: 'Inventory Cost', value: formatCurrency(inventoryValue), icon: IndianRupee, color: 'text-blue-600', bgColor: 'bg-blue-50' },
-    { label: 'Total Revenue', value: formatCurrency(totalRevenue), icon: ShoppingCart, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
-    { label: 'Total Credit', value: formatCurrency(totalCreditSales), icon: TrendingDown, color: 'text-amber-600', bgColor: 'bg-amber-50' },
-    { label: 'Net Profit', value: formatCurrency(netProfit), icon: TrendingUp, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
+    { label: 'Inventory Cost', value: formatCurrency(inventoryValue, true), icon: IndianRupee, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+    { label: 'Total Revenue', value: formatCurrency(totalRevenue, true), icon: ShoppingCart, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
+    { label: 'Total Credit', value: formatCurrency(totalCreditSales, true), icon: TrendingDown, color: 'text-amber-600', bgColor: 'bg-amber-50' },
+    { label: 'Net Profit', value: formatCurrency(netProfit, true), icon: TrendingUp, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
     { label: 'Profit Margin', value: `${profitMargin.toFixed(1)}%`, icon: Gem, color: 'text-brand-accent', bgColor: 'bg-brand-accent/5' },
   ];
 
@@ -123,8 +123,8 @@ export function Dashboard({ products, sales }: DashboardProps) {
                   <p className="text-[10px] text-brand-muted uppercase font-bold tracking-widest mt-1">Sold to {sale.customerName}</p>
                 </div>
                 <div className="text-left sm:text-right w-full sm:w-auto border-t sm:border-t-0 pt-4 sm:pt-0 border-brand-border/30">
-                  <p className="text-sm font-bold text-brand-accent">+{formatCurrency(sale.retailPrice * (sale.quantity || 1))}</p>
-                  <p className="text-[10px] text-brand-muted font-medium opacity-60">Profit: {formatCurrency((sale.retailPrice - sale.costAtSale) * (sale.quantity || 1))}</p>
+                  <p className="text-sm font-bold text-brand-accent">+{formatCurrency(sale.retailPrice * (sale.quantity || 1), true)}</p>
+                  <p className="text-[10px] text-brand-muted font-medium opacity-60">Profit: {formatCurrency((sale.retailPrice - sale.costAtSale) * (sale.quantity || 1), true)}</p>
                 </div>
               </div>
             ))}

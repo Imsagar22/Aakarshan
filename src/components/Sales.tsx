@@ -245,7 +245,7 @@ export function Sales({ sales, products, customers, user }: SalesProps) {
                     fontSize: '11px',
                     fontWeight: 600
                   }}
-                  formatter={(value: number) => [formatCurrency(value), 'Revenue']}
+                  formatter={(value: number) => [formatCurrency(value, true), 'Revenue']}
                 />
                 <Bar 
                   dataKey="total" 
@@ -436,15 +436,15 @@ export function Sales({ sales, products, customers, user }: SalesProps) {
               <div className="grid grid-cols-2 lg:flex lg:items-center gap-8 lg:gap-12 text-left lg:text-right border-t lg:border-t-0 pt-6 lg:pt-0 border-brand-border/30">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-muted mb-2">Total Sale</p>
-                  <p className="text-xl sm:text-2xl font-light text-brand-ink">{formatCurrency(sale.retailPrice * (sale.quantity || 1))}</p>
+                  <p className="text-xl sm:text-2xl font-light text-brand-ink">{formatCurrency(sale.retailPrice * (sale.quantity || 1), true)}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-muted mb-2">Total Cost</p>
-                  <p className="text-xl sm:text-2xl font-light text-brand-muted">{formatCurrency(sale.costAtSale * (sale.quantity || 1))}</p>
+                  <p className="text-xl sm:text-2xl font-light text-brand-muted">{formatCurrency(sale.costAtSale * (sale.quantity || 1), true)}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-accent mb-2">Net Profit</p>
-                  <p className="text-xl sm:text-2xl font-semibold text-brand-accent">{formatCurrency((sale.retailPrice - sale.costAtSale) * (sale.quantity || 1))}</p>
+                  <p className="text-xl sm:text-2xl font-semibold text-brand-accent">{formatCurrency((sale.retailPrice - sale.costAtSale) * (sale.quantity || 1), true)}</p>
                 </div>
                 <div className="col-span-2 lg:col-auto flex lg:flex-col justify-end gap-2 pt-4 lg:pt-0 border-t lg:border-t-0 border-brand-border/30">
                   <button 
