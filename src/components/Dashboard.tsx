@@ -21,7 +21,7 @@ interface DashboardProps {
 }
 
 export function Dashboard({ products, sales }: DashboardProps) {
-  const totalSpent = products.reduce((sum, p) => sum + p.cost, 0);
+  const inventoryValue = products.reduce((sum, p) => sum + (p.cost * (p.quantity || 0)), 0);
   const totalRevenue = sales.reduce((sum, s) => sum + (s.retailPrice * (s.quantity || 1)), 0);
   const totalCostOfSold = sales.reduce((sum, s) => sum + (s.costAtSale * (s.quantity || 1)), 0);
   const totalCreditSales = sales
@@ -31,11 +31,11 @@ export function Dashboard({ products, sales }: DashboardProps) {
   const netProfit = totalRevenue - totalCostOfSold;
   
   const profitMargin = totalRevenue > 0 
-    ? ((totalRevenue - totalCostOfSold) / totalRevenue) * 100 
+    ? (netProfit / totalRevenue) * 100 
     : 0;
 
   const stats = [
-    { label: 'Inventory Cost', value: formatCurrency(totalSpent), icon: IndianRupee, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+    { label: 'Inventory Cost', value: formatCurrency(inventoryValue), icon: IndianRupee, color: 'text-blue-600', bgColor: 'bg-blue-50' },
     { label: 'Total Revenue', value: formatCurrency(totalRevenue), icon: ShoppingCart, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
     { label: 'Total Credit', value: formatCurrency(totalCreditSales), icon: TrendingDown, color: 'text-amber-600', bgColor: 'bg-amber-50' },
     { label: 'Net Profit', value: formatCurrency(netProfit), icon: TrendingUp, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
