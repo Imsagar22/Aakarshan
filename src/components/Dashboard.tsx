@@ -13,7 +13,7 @@ import {
 } from 'recharts';
 import { TrendingUp, TrendingDown, IndianRupee, Gem, ShoppingCart } from 'lucide-react';
 import { Product, Sale } from '../types';
-import { formatCurrency } from '../lib/utils';
+import { formatCurrency, cn } from '../lib/utils';
 
 interface DashboardProps {
   products: Product[];
@@ -35,11 +35,11 @@ export function Dashboard({ products, sales }: DashboardProps) {
     : 0;
 
   const stats = [
-    { label: 'Inventory Cost', value: formatCurrency(totalSpent), color: 'bg-blue-500' },
-    { label: 'Total Revenue', value: formatCurrency(totalRevenue), color: 'bg-emerald-500' },
-    { label: 'Total Credit', value: formatCurrency(totalCreditSales), color: 'bg-amber-500' },
-    { label: 'Net Profit', value: formatCurrency(netProfit), color: 'bg-indigo-500' },
-    { label: 'Profit Margin', value: `${profitMargin.toFixed(1)}%`, color: 'bg-indigo-500' },
+    { label: 'Inventory Cost', value: formatCurrency(totalSpent), icon: IndianRupee, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+    { label: 'Total Revenue', value: formatCurrency(totalRevenue), icon: ShoppingCart, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
+    { label: 'Total Credit', value: formatCurrency(totalCreditSales), icon: TrendingDown, color: 'text-amber-600', bgColor: 'bg-amber-50' },
+    { label: 'Net Profit', value: formatCurrency(netProfit), icon: TrendingUp, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
+    { label: 'Profit Margin', value: `${profitMargin.toFixed(1)}%`, icon: Gem, color: 'text-brand-accent', bgColor: 'bg-brand-accent/5' },
   ];
 
   // Data for charts
@@ -64,11 +64,18 @@ export function Dashboard({ products, sales }: DashboardProps) {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
         {stats.map((stat, i) => (
-          <div key={i} className="bg-white p-8 rounded-[2rem] border border-brand-border/50 shadow-sm transition-all hover:shadow-md">
-            <p className="text-[10px] text-brand-muted font-bold uppercase tracking-[0.2em] mb-2">{stat.label}</p>
-            <p className="text-3xl font-light text-brand-ink leading-none">{stat.value}</p>
+          <div key={i} className="bg-white p-6 rounded-[2.5rem] border border-brand-border shadow-sm transition-all hover:shadow-md flex flex-col items-start gap-4 h-full min-h-[160px]">
+            <div className={cn("p-3 rounded-2xl", stat.bgColor)}>
+              <stat.icon className={cn("w-5 h-5", stat.color)} />
+            </div>
+            <div>
+              <p className="text-[10px] text-brand-muted font-bold uppercase tracking-[0.2em] mb-1.5">{stat.label}</p>
+              <p className="text-xl sm:text-2xl font-light text-brand-ink leading-tight break-all font-mono tracking-tighter">
+                {stat.value}
+              </p>
+            </div>
           </div>
         ))}
       </div>

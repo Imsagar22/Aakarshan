@@ -1,9 +1,18 @@
 import React from 'react';
-import { ShoppingBag, ArrowRight, Calendar, User as UserIcon, IndianRupee, Search, Trash2, Edit2 } from 'lucide-react';
+import { ShoppingBag, ArrowRight, Calendar, User as UserIcon, IndianRupee, Search, Trash2, Edit2, BarChart3 } from 'lucide-react';
 import { Product, Contact, Sale } from '../types';
 import { formatCurrency, cn } from '../lib/utils';
 import { collection, addDoc, serverTimestamp, updateDoc, doc, runTransaction, deleteDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+} from 'recharts';
 
 import { type User } from 'firebase/auth';
 
@@ -165,6 +174,23 @@ export function Sales({ sales, products, customers, user }: SalesProps) {
     )
     .sort((a, b) => b.saleDate.localeCompare(a.saleDate));
 
+  const chartData = React.useMemo(() => {
+    const dailySales: { [key: string]: number } = {};
+    sales.forEach(s => {
+      const date = s.saleDate;
+      dailySales[date] = (dailySales[date] || 0) + (s.retailPrice * (s.quantity || 1));
+    });
+
+    return Object.entries(dailySales)
+      .map(([date, total]) => ({
+        date: new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+        rawDate: date,
+        total
+      }))
+      .sort((a, b) => a.rawDate.localeCompare(b.rawDate))
+      .slice(-7); // Last 7 active sales days
+  }, [sales]);
+
   return (
     <div className="space-y-6">
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 border-b border-brand-border pb-6">
@@ -180,6 +206,58 @@ export function Sales({ sales, products, customers, user }: SalesProps) {
           Record Sale
         </button>
       </header>
+
+      {/* Sales Performance Chart */}
+      {chartData.length > 0 && (
+        <div className="bg-white p-6 sm:p-8 rounded-[2.5rem] border border-brand-border shadow-sm">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="p-2.5 bg-brand-accent/5 rounded-xl text-brand-accent">
+              <BarChart3 size={20} />
+            </div>
+            <div>
+              <h3 className="font-serif italic text-xl font-medium leading-none">Sales Performance</h3>
+              <p className="text-[10px] text-brand-muted uppercase tracking-widest mt-1.5 font-bold">Revenue over last 7 active days</p>
+            </div>
+          </div>
+          
+          <div className="h-[240px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#00000008" />
+                <XAxis 
+                  dataKey="date" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fontWeight: 600, fill: '#64748b' }}
+                  dy={10}
+                />
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fontWeight: 600, fill: '#64748b' }}
+                />
+                <Tooltip 
+                  cursor={{ fill: '#00000005' }}
+                  contentStyle={{ 
+                    borderRadius: '16px', 
+                    border: '1px solid #f1f5f9', 
+                    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                    fontSize: '11px',
+                    fontWeight: 600
+                  }}
+                  formatter={(value: number) => [formatCurrency(value), 'Revenue']}
+                />
+                <Bar 
+                  dataKey="total" 
+                  fill="#7c3aed" 
+                  radius={[6, 6, 0, 0]} 
+                  barSize={40}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       {isRecording && (
         <div className="fixed inset-0 bg-brand-ink/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Search, Filter, MoreVertical, Trash2, Edit2 } from 'lucide-react';
+import { Plus, Search, Filter, MoreVertical, Trash2, Edit2, Download } from 'lucide-react';
 import { Product, Contact } from '../types';
 import { formatCurrency, cn } from '../lib/utils';
 import { collection, addDoc, serverTimestamp, deleteDoc, doc, updateDoc } from 'firebase/firestore';
@@ -98,6 +98,35 @@ export function Inventory({ products, wholesalers, user }: InventoryProps) {
     }
   }
 
+  function handleExportCSV() {
+    const headers = ['Name', 'Category', 'Wholesaler', 'Cost', 'Quantity', 'Status', 'Purchase Date'];
+    const rows = filteredProducts.map(p => [
+      p.name,
+      p.category,
+      p.wholesalerName,
+      p.cost,
+      p.quantity || 0,
+      p.status,
+      p.purchaseDate
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `inventory_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
   return (
     <div className="space-y-6">
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 border-b border-brand-border pb-6">
@@ -105,13 +134,22 @@ export function Inventory({ products, wholesalers, user }: InventoryProps) {
           <h1 className="text-3xl md:text-4xl font-serif italic text-brand-accent leading-none">Aakarshan Inventory</h1>
           <p className="text-[10px] md:text-xs text-brand-muted mt-2 font-medium tracking-widest uppercase">Collection Management</p>
         </div>
-        <button 
-          onClick={() => setIsAdding(true)}
-          className="w-full sm:w-auto flex items-center justify-center gap-2 bg-brand-accent text-white px-8 py-3 rounded-full font-bold text-[11px] uppercase tracking-widest hover:scale-105 transition-all shadow-lg shadow-brand-accent/20"
-        >
-          <Plus size={16} />
-          Add Piece
-        </button>
+        <div className="w-full sm:w-auto flex items-center gap-3">
+          <button 
+            onClick={handleExportCSV}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white border border-brand-border text-brand-ink px-6 py-3 rounded-full font-bold text-[11px] uppercase tracking-widest hover:bg-brand-surface transition-all"
+          >
+            <Download size={16} />
+            Export CSV
+          </button>
+          <button 
+            onClick={() => setIsAdding(true)}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-brand-accent text-white px-8 py-3 rounded-full font-bold text-[11px] uppercase tracking-widest hover:scale-105 transition-all shadow-lg shadow-brand-accent/20"
+          >
+            <Plus size={16} />
+            Add Piece
+          </button>
+        </div>
       </header>
 
       {isAdding && (
