@@ -29,12 +29,14 @@ export function Dashboard({ products, sales }: DashboardProps) {
     .reduce((sum, s) => sum + (s.retailPrice * (s.quantity || 1)), 0);
   
   const netProfit = totalRevenue - totalCostOfSold;
+  const totalInvestment = inventoryValue + totalCostOfSold;
   
   const profitMargin = totalRevenue > 0 
     ? (netProfit / totalRevenue) * 100 
     : 0;
 
   const stats = [
+    { label: 'Total Investment', value: formatCurrency(totalInvestment, true), icon: Gem, color: 'text-purple-600', bgColor: 'bg-purple-50' },
     { label: 'Inventory Cost', value: formatCurrency(inventoryValue, true), icon: IndianRupee, color: 'text-blue-600', bgColor: 'bg-blue-50' },
     { label: 'Total Revenue', value: formatCurrency(totalRevenue, true), icon: ShoppingCart, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
     { label: 'Total Credit', value: formatCurrency(totalCreditSales, true), icon: TrendingDown, color: 'text-amber-600', bgColor: 'bg-amber-50' },
@@ -64,7 +66,7 @@ export function Dashboard({ products, sales }: DashboardProps) {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
         {stats.map((stat, i) => (
           <div key={i} className="bg-white p-6 rounded-[2.5rem] border border-brand-border shadow-sm transition-all hover:shadow-md flex flex-col items-start gap-4 h-full min-h-[160px]">
             <div className={cn("p-3 rounded-2xl", stat.bgColor)}>
